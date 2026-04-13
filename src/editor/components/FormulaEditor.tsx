@@ -50,9 +50,10 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
 
     const isControlled = controlledValue !== undefined;
     const editorRef = React.useRef<HTMLDivElement>(null);
+    const initialFormula = isControlled ? controlledValue : (defaultValue || '');
     const [internalValue, setInternalValue] = React.useState(defaultValue || '');
     const [isFocused, setIsFocused] = React.useState(false);
-    const [tokens, setTokens] = React.useState<Token[]>([]);
+    const [tokens, setTokens] = React.useState<Token[]>(() => tokenizeSafe(initialFormula).tokens);
     const [parseError, setParseError] = React.useState<FormulaParseError | null>(null);
     const [suggestions, setSuggestions] = React.useState<AutocompleteSuggestion[]>([]);
     const [selectedIndex, setSelectedIndex] = React.useState(-1);
