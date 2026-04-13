@@ -1,0 +1,20 @@
+node_modules/
+dist/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage / test
+coverage/
+
+# Env
+.env
+.env.*
