@@ -22,6 +22,7 @@ import {
 import { getCursorContext } from '../autocomplete/cursorContext.js';
 import { getSuggestions } from '../autocomplete/AutocompleteEngine.js';
 import { getCursorOffset, setCursorOffset } from '../utils/cursor.js';
+import { UndoStack } from '../utils/undoStack.js';
 import { buildHighlightedHTML } from './HighlightedContent.js';
 import { AutocompleteDropdown } from './AutocompleteDropdown.js';
 
@@ -61,6 +62,8 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     const [showDropdown, setShowDropdown] = React.useState(false);
     const cursorContextRef = React.useRef<CursorContext>({ type: 'none' });
     const pendingCursorRef = React.useRef<number | null>(null);
+    const undoStackRef = React.useRef(new UndoStack());
+    const typingGroupTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const formulaValue = isControlled ? controlledValue : internalValue;
     const mergedColors = React.useMemo(() => mergeColors(colorsProp), [colorsProp]);
@@ -117,8 +120,9 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       [columns, functionDefs, onChange, isFocused],
     );
 
-    // Initial tokenization
+    // Initial tokenization + undo stack seed
     React.useEffect(() => {
+      undoStackRef.current.push({ value: formulaValue, cursorPos: formulaValue.length });
       processFormula(formulaValue, 0);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -172,10 +176,31 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
 
       const range = sel.getRangeAt(0);
       const caretRect = range.getBoundingClientRect();
+
+      // Empty contentEditable or collapsed range at start → zero rect; fall back to editor
+      if (caretRect.left === 0 && caretRect.top === 0 && caretRect.width === 0) {
+        const rect = el.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY + 2,
+          left: rect.left + window.scrollX,
+        });
+        return;
+      }
+
       setDropdownPosition({
         top: caretRect.bottom + window.scrollY + 2,
         left: caretRect.left + window.scrollX,
       });
+    }
+
+    function restoreUndoEntry(entry: { value: string; cursorPos: number } | null) {
+      if (!entry) return;
+      pendingCursorRef.current = entry.cursorPos;
+      if (!isControlled) {
+        setInternalValue(entry.value);
+      }
+      processFormula(entry.value, entry.cursorPos);
+      setShowDropdown(false);
     }
 
     function handleInput() {
@@ -186,6 +211,22 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       const cursorPos = getCursorOffset(el);
       pendingCursorRef.current = cursorPos;
 
+      // Undo grouping: small changes within 300ms group together
+      const undo = undoStackRef.current;
+      const prev = undo.current();
+      const isSmallChange = prev && Math.abs(text.length - prev.value.length) <= 2;
+
+      if (isSmallChange && typingGroupTimerRef.current) {
+        undo.replaceCurrent({ value: text, cursorPos });
+      } else {
+        undo.push({ value: text, cursorPos });
+      }
+
+      if (typingGroupTimerRef.current) clearTimeout(typingGroupTimerRef.current);
+      typingGroupTimerRef.current = setTimeout(() => {
+        typingGroupTimerRef.current = null;
+      }, 300);
+
       if (!isControlled) {
         setInternalValue(text);
       }
@@ -194,6 +235,31 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
       if (disabled || readOnly) return;
+
+      // Undo: Ctrl+Z
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        e.preventDefault();
+        if (typingGroupTimerRef.current) {
+          clearTimeout(typingGroupTimerRef.current);
+          typingGroupTimerRef.current = null;
+        }
+        restoreUndoEntry(undoStackRef.current.undo());
+        return;
+      }
+
+      // Redo: Ctrl+Y or Ctrl+Shift+Z
+      if (
+        (e.key === 'y' && (e.ctrlKey || e.metaKey)) ||
+        (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)
+      ) {
+        e.preventDefault();
+        if (typingGroupTimerRef.current) {
+          clearTimeout(typingGroupTimerRef.current);
+          typingGroupTimerRef.current = null;
+        }
+        restoreUndoEntry(undoStackRef.current.redo());
+        return;
+      }
 
       // Prevent Enter from inserting newlines (formulas are single-line)
       if (e.key === 'Enter') {
@@ -263,6 +329,13 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       const newFormula =
         formula.slice(0, replaceStart) + suggestion.insertText + formula.slice(replaceEnd);
       const newCursorPos = replaceStart + suggestion.insertText.length;
+
+      // Discrete operation — push to undo stack, clear typing group
+      if (typingGroupTimerRef.current) {
+        clearTimeout(typingGroupTimerRef.current);
+        typingGroupTimerRef.current = null;
+      }
+      undoStackRef.current.push({ value: newFormula, cursorPos: newCursorPos });
 
       pendingCursorRef.current = newCursorPos;
 
