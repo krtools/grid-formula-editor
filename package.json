@@ -19,7 +19,8 @@
     "build": "vite build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:browser": "vitest run --config vitest.browser.config.ts"
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "demo": "vite --config demo/vite.config.ts"
   },
   "author": "Kyle Rector <krtools@users.noreply.github.com>",
   "license": "MIT",
