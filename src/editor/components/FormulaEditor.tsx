@@ -74,12 +74,19 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     const mergedStyles = React.useMemo(() => mergeStyles(stylesProp), [stylesProp]);
     const functionDefs = functions || BUILTIN_FUNCTIONS;
 
-    // Build known function set for validation
+    // Build known function/column sets for validation
     const knownFunctions = React.useMemo(() => {
       const set = new Set<string>();
       for (const f of functionDefs) set.add(f.name.toUpperCase());
       return set;
     }, [functionDefs]);
+
+    const knownColumns = React.useMemo(() => {
+      if (columns.length === 0) return undefined; // no columns defined → skip column validation
+      const set = new Set<string>();
+      for (const c of columns) set.add(c.name);
+      return set;
+    }, [columns]);
 
     // Imperative handle
     React.useImperativeHandle(ref, () => ({
@@ -113,7 +120,7 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         setParseError(error);
 
         // Validation (squiggles)
-        const valErrors = validateFormula(newTokens, error, knownFunctions);
+        const valErrors = validateFormula(newTokens, error, knownFunctions, knownColumns);
         setValidationErrors(valErrors);
         setCursorOffsetState(cursorPos);
 
@@ -137,7 +144,7 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         const info: FormulaChangeInfo = { ast, error, tokens: newTokens };
         onChange?.(formula, info);
       },
-      [columns, functionDefs, onChange, isFocused, knownFunctions],
+      [columns, functionDefs, onChange, isFocused, knownFunctions, knownColumns],
     );
 
     // Initial tokenization + undo stack seed

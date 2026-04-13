@@ -88,4 +88,48 @@ describe('validateFormula', () => {
     const errors = validateFormula(tokens, null, custom);
     expect(errors).toEqual([]);
   });
+
+  it('detects unknown column reference', () => {
+    const cols = new Set(['price', 'quantity']);
+    const formula = 'price + foo';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN, cols);
+    expect(errors).toEqual([
+      { message: 'Unknown column: foo', start: 8, end: 11, type: 'unknown-column' },
+    ]);
+  });
+
+  it('detects unknown bracket column reference', () => {
+    const cols = new Set(['price', 'First Name']);
+    const formula = '[Last Name] + price';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN, cols);
+    expect(errors).toEqual([
+      { message: 'Unknown column: Last Name', start: 0, end: 11, type: 'unknown-column' },
+    ]);
+  });
+
+  it('does not flag known columns', () => {
+    const cols = new Set(['price', 'quantity']);
+    const formula = 'price * quantity';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN, cols);
+    expect(errors).toEqual([]);
+  });
+
+  it('skips column validation when knownColumns is undefined', () => {
+    const formula = 'anyColumn + anotherColumn';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN);
+    expect(errors).toEqual([]);
+  });
+
+  it('column names are case-sensitive', () => {
+    const cols = new Set(['Price']);
+    const formula = 'price + Price';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN, cols);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toBe('Unknown column: price');
+  });
 });

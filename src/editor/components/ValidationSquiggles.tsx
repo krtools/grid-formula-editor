@@ -220,7 +220,7 @@ export function ValidationSquiggles({
   return (
     <>
       {rects.map((r, i) => {
-        const squigglyColor = r.error.type === 'unknown-function' ? '#d97706' : mergedColors.error;
+        const squigglyColor = r.error.type === 'parse' ? mergedColors.error : '#d97706';
         const svgBg = squigglyBgForColor(squigglyColor);
         const waveTop = r.top + r.height - 2;
 
