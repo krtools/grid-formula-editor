@@ -17,14 +17,15 @@ import {
   getEditorStyle,
   getEditorFocusStyle,
   getPlaceholderStyle,
-  getErrorIndicatorStyle,
 } from '../styles/inlineStyles.js';
 import { getCursorContext } from '../autocomplete/cursorContext.js';
 import { getSuggestions } from '../autocomplete/AutocompleteEngine.js';
 import { getCursorOffset, setCursorOffset } from '../utils/cursor.js';
 import { UndoStack } from '../utils/undoStack.js';
+import { validateFormula, FormulaValidationError } from '../validation/formulaValidator.js';
 import { buildHighlightedHTML } from './HighlightedContent.js';
 import { AutocompleteDropdown } from './AutocompleteDropdown.js';
+import { ValidationSquiggles } from './ValidationSquiggles.js';
 
 /**
  * FormulaEditor — a contentEditable React component with syntax highlighting,
@@ -64,11 +65,21 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     const pendingCursorRef = React.useRef<number | null>(null);
     const undoStackRef = React.useRef(new UndoStack());
     const typingGroupTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const [validationErrors, setValidationErrors] = React.useState<FormulaValidationError[]>([]);
+    const [cursorOffset, setCursorOffsetState] = React.useState(0);
 
     const formulaValue = isControlled ? controlledValue : internalValue;
     const mergedColors = React.useMemo(() => mergeColors(colorsProp), [colorsProp]);
     const mergedStyles = React.useMemo(() => mergeStyles(stylesProp), [stylesProp]);
     const functionDefs = functions || BUILTIN_FUNCTIONS;
+
+    // Build known function set for validation
+    const knownFunctions = React.useMemo(() => {
+      const set = new Set<string>();
+      for (const f of functionDefs) set.add(f.name.toUpperCase());
+      return set;
+    }, [functionDefs]);
 
     // Imperative handle
     React.useImperativeHandle(ref, () => ({
@@ -101,6 +112,11 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         }
         setParseError(error);
 
+        // Validation (squiggles)
+        const valErrors = validateFormula(newTokens, error, knownFunctions);
+        setValidationErrors(valErrors);
+        setCursorOffsetState(cursorPos);
+
         // Autocomplete
         const ctx = getCursorContext(formula, cursorPos);
         cursorContextRef.current = ctx;
@@ -121,7 +137,7 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         const info: FormulaChangeInfo = { ast, error, tokens: newTokens };
         onChange?.(formula, info);
       },
-      [columns, functionDefs, onChange, isFocused],
+      [columns, functionDefs, onChange, isFocused, knownFunctions],
     );
 
     // Initial tokenization + undo stack seed
@@ -397,7 +413,7 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     }, [ctx, functionDefs]);
 
     return (
-      <div className={className} style={containerStyles}>
+      <div ref={containerRef} className={className} style={containerStyles}>
         <div
           ref={editorRef}
           contentEditable={!disabled && !readOnly}
@@ -417,11 +433,14 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
             {placeholder}
           </div>
         )}
-        {parseError && isFocused && (
-          <div style={getErrorIndicatorStyle(mergedColors)} data-testid="formula-error">
-            {parseError.message}
-          </div>
-        )}
+        <ValidationSquiggles
+          errors={validationErrors}
+          editorElement={editorRef.current}
+          containerElement={containerRef.current}
+          cursorOffset={cursorOffset}
+          colors={colorsProp}
+          styles={stylesProp}
+        />
         <AutocompleteDropdown
           suggestions={suggestions}
           selectedIndex={selectedIndex}
