@@ -1,0 +1,7 @@
+{
+  "name": "ag-grid-formulas",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Kyle Rector <krtools@users.noreply.github.com>",
+  "license": "MIT"
+}
