@@ -1,4 +1,4 @@
-import { Token, TokenType, ASTNode } from './types.js';
+import { Token, TokenType, ASTNode, FormulaParseError } from './types.js';
 import { tokenize } from './tokenizer.js';
 
 export function parse(formula: string): ASTNode {
@@ -12,8 +12,10 @@ export function parse(formula: string): ASTNode {
   function eat(type: TokenType): Token {
     const token = current();
     if (token.type !== type) {
-      throw new Error(
-        `Expected ${type} but got ${token.type} ("${token.value}") at position ${token.position}`,
+      throw new FormulaParseError(
+        `Expected ${type} but got ${token.type} ("${token.value}") at position ${token.start}`,
+        token.start,
+        token.end,
       );
     }
     pos++;
@@ -142,8 +144,10 @@ export function parse(formula: string): ASTNode {
       }
 
       default:
-        throw new Error(
-          `Unexpected token "${token.value}" (${token.type}) at position ${token.position}`,
+        throw new FormulaParseError(
+          `Unexpected token "${token.value}" (${token.type}) at position ${token.start}`,
+          token.start,
+          token.end,
         );
     }
   }
@@ -168,8 +172,11 @@ export function parse(formula: string): ASTNode {
 
   const result = parseExpression();
   if (current().type !== TokenType.EOF) {
-    throw new Error(
-      `Unexpected token "${current().value}" at position ${current().position}`,
+    const token = current();
+    throw new FormulaParseError(
+      `Unexpected token "${token.value}" at position ${token.start}`,
+      token.start,
+      token.end,
     );
   }
   return result;

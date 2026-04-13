@@ -1,10 +1,11 @@
 export { compile } from './compiler.js';
 export { parse } from './parser.js';
-export { tokenize } from './tokenizer.js';
+export { tokenize, tokenizeSafe } from './tokenizer.js';
 export { createBuiltinFunctions } from './functions.js';
 export {
   TokenType,
   FormulaEvalError,
+  FormulaParseError,
 } from './types.js';
 export type {
   FormulaColumn,

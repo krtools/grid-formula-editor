@@ -23,12 +23,14 @@ export enum TokenType {
   LTE = 'LTE',
   GTE = 'GTE',
   EOF = 'EOF',
+  ERROR = 'ERROR',
 }
 
 export interface Token {
   type: TokenType;
   value: string;
-  position: number;
+  start: number;
+  end: number;
 }
 
 // ============ AST ============
@@ -101,6 +103,17 @@ export interface FormulaError {
   referencedColumns: string[];
   message: string;
   cause?: unknown;
+}
+
+export class FormulaParseError extends Error {
+  constructor(
+    message: string,
+    public start: number,
+    public end: number,
+  ) {
+    super(message);
+    this.name = 'FormulaParseError';
+  }
 }
 
 export class FormulaEvalError extends Error {
