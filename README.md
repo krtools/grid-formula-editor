@@ -642,6 +642,149 @@ processor.process({ revenue: 0, cost: 100, region: null, country: null });
 
 ---
 
+## FormulaEditor (React component)
+
+A rich editor component for authoring formulas with syntax highlighting,
+real-time validation, and autocomplete. Requires React >=16.8.
+
+```bash
+# The editor is a separate entry point — the core engine has zero dependencies
+import { FormulaEditor } from 'ag-grid-formulas/editor';
+```
+
+### Basic usage
+
+```tsx
+import { FormulaEditor } from 'ag-grid-formulas/editor';
+
+function App() {
+  return (
+    <FormulaEditor
+      columns={[
+        { name: 'price', description: 'Unit price' },
+        { name: 'quantity', description: 'Item count' },
+        { name: 'First Name', label: 'First Name' },
+      ]}
+      placeholder="Enter formula..."
+      onChange={(formula, info) => {
+        console.log('Formula:', formula);
+        console.log('AST:', info.ast);
+        console.log('Error:', info.error);
+      }}
+    />
+  );
+}
+```
+
+### Props
+
+| Prop           | Type | Description |
+|----------------|------|-------------|
+| `value`        | `string` | Controlled value. |
+| `defaultValue` | `string` | Initial value (uncontrolled). |
+| `onChange`      | `(formula, info) => void` | Called on every change with formula string, AST, error, and tokens. |
+| `columns`      | `ColumnDef[]` | Column definitions for autocomplete. |
+| `functions`    | `FunctionDef[]` | Function definitions. Defaults to all built-in functions. |
+| `colors`       | `FormulaColorConfig` | Color overrides (merged with `DEFAULT_COLORS`). |
+| `styles`       | `FormulaStyleConfig` | Layout style overrides. |
+| `placeholder`  | `string` | Placeholder text. |
+| `disabled`     | `boolean` | Disable all interaction. |
+| `readOnly`     | `boolean` | Allow selection but not editing. |
+| `className`    | `string` | CSS class on the outer container. |
+| `style`        | `CSSProperties` | Inline styles on the outer container. |
+| `onFocus`      | `() => void` | Focus callback. |
+| `onBlur`       | `() => void` | Blur callback. |
+
+### Controlled vs uncontrolled
+
+```tsx
+// Uncontrolled — editor manages its own state
+<FormulaEditor defaultValue="price * quantity" onChange={(f) => save(f)} />
+
+// Controlled — you manage the value
+const [formula, setFormula] = useState('price * quantity');
+<FormulaEditor value={formula} onChange={(f) => setFormula(f)} />
+```
+
+### Imperative handle
+
+```tsx
+const ref = useRef<FormulaEditorHandle>(null);
+
+<FormulaEditor ref={ref} columns={columns} />
+
+// Later:
+ref.current.getValue();       // read formula
+ref.current.setValue('a + b'); // set formula
+ref.current.focus();           // focus editor
+```
+
+### Theming
+
+The editor uses inline styles only — no CSS files. Override colors and
+layout with the `colors` and `styles` props.
+
+```tsx
+import { DARK_COLORS } from 'ag-grid-formulas/editor';
+
+<FormulaEditor
+  columns={columns}
+  colors={DARK_COLORS}
+  styles={{ editorBorderRadius: '0', editorPadding: '8px 12px' }}
+/>
+```
+
+Color presets: `DEFAULT_COLORS` (light, VS Code-inspired) and `DARK_COLORS`.
+All color keys are optional — omitted keys fall back to the defaults.
+
+### Autocomplete
+
+The dropdown appears automatically when you type a column or function name
+prefix. Keyboard navigation:
+
+- **Arrow Up/Down** — navigate suggestions
+- **Enter / Tab** — accept selected suggestion
+- **Escape** — close dropdown
+
+Column names with spaces are auto-wrapped in brackets. Function names
+auto-append `(`.
+
+### Custom functions in autocomplete
+
+Pass `functions` to show your custom functions alongside the built-ins:
+
+```tsx
+<FormulaEditor
+  columns={columns}
+  functions={[
+    ...BUILTIN_FUNCTIONS,
+    { name: 'SLUGIFY', description: 'URL-safe slug', signature: 'SLUGIFY(text)' },
+    { name: 'INITIALS', description: 'First letters', signature: 'INITIALS(first, last)' },
+  ]}
+/>
+```
+
+### `FormulaChangeInfo`
+
+The second argument to `onChange`:
+
+```ts
+interface FormulaChangeInfo {
+  ast: ASTNode | null;          // Parsed AST, or null on error
+  error: FormulaParseError | null; // Parse error with start/end positions
+  tokens: Token[];               // Fault-tolerant token array
+}
+```
+
+### Architecture
+
+The editor is exported from `ag-grid-formulas/editor` as a separate entry
+point, so the core formula engine (`ag-grid-formulas`) remains dependency-free.
+React is an optional peer dependency — if you only use the core engine, you
+don't need React installed.
+
+---
+
 ## License
 
 MIT
