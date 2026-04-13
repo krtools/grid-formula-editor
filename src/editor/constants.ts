@@ -72,42 +72,162 @@ export const DEFAULT_STYLES: Required<FormulaStyleConfig> = {
 /** Built-in function definitions for autocomplete. */
 export const BUILTIN_FUNCTIONS: FunctionDef[] = [
   // Math
-  { name: 'ROUND', description: 'Round to N decimal places', signature: 'ROUND(value, decimals)' },
-  { name: 'FLOOR', description: 'Round down to integer', signature: 'FLOOR(value)' },
-  { name: 'CEIL', description: 'Round up to integer', signature: 'CEIL(value)' },
-  { name: 'ABS', description: 'Absolute value', signature: 'ABS(value)' },
-  { name: 'MIN', description: 'Smallest of the arguments', signature: 'MIN(a, b, ...)' },
-  { name: 'MAX', description: 'Largest of the arguments', signature: 'MAX(a, b, ...)' },
-  { name: 'MOD', description: 'Remainder after division', signature: 'MOD(value, divisor)' },
-  { name: 'POWER', description: 'Raise to a power', signature: 'POWER(base, exponent)' },
-  { name: 'SQRT', description: 'Square root', signature: 'SQRT(value)' },
+  {
+    name: 'ROUND', description: 'Round to N decimal places', signature: 'ROUND(value, decimals)',
+    parameters: [
+      { name: 'value', type: 'number', description: 'The number to round' },
+      { name: 'decimals', type: 'number', description: 'Number of decimal places', optional: true },
+    ],
+  },
+  {
+    name: 'FLOOR', description: 'Round down to integer', signature: 'FLOOR(value)',
+    parameters: [{ name: 'value', type: 'number', description: 'The number to round down' }],
+  },
+  {
+    name: 'CEIL', description: 'Round up to integer', signature: 'CEIL(value)',
+    parameters: [{ name: 'value', type: 'number', description: 'The number to round up' }],
+  },
+  {
+    name: 'ABS', description: 'Absolute value', signature: 'ABS(value)',
+    parameters: [{ name: 'value', type: 'number', description: 'The number' }],
+  },
+  {
+    name: 'MIN', description: 'Smallest of the arguments', signature: 'MIN(a, b, ...)',
+    parameters: [{ name: 'values', type: 'number', description: 'Numbers to compare', rest: true }],
+  },
+  {
+    name: 'MAX', description: 'Largest of the arguments', signature: 'MAX(a, b, ...)',
+    parameters: [{ name: 'values', type: 'number', description: 'Numbers to compare', rest: true }],
+  },
+  {
+    name: 'MOD', description: 'Remainder after division', signature: 'MOD(value, divisor)',
+    parameters: [
+      { name: 'value', type: 'number', description: 'The dividend' },
+      { name: 'divisor', type: 'number', description: 'The divisor' },
+    ],
+  },
+  {
+    name: 'POWER', description: 'Raise to a power', signature: 'POWER(base, exponent)',
+    parameters: [
+      { name: 'base', type: 'number', description: 'The base number' },
+      { name: 'exponent', type: 'number', description: 'The exponent' },
+    ],
+  },
+  {
+    name: 'SQRT', description: 'Square root', signature: 'SQRT(value)',
+    parameters: [{ name: 'value', type: 'number', description: 'The number' }],
+  },
 
   // String
-  { name: 'CONCAT', description: 'Join text values', signature: 'CONCAT(a, b, ...)' },
-  { name: 'LEFT', description: 'First N characters', signature: 'LEFT(text, count)' },
-  { name: 'RIGHT', description: 'Last N characters', signature: 'RIGHT(text, count)' },
-  { name: 'MID', description: 'Substring from position', signature: 'MID(text, start, count)' },
-  { name: 'LEN', description: 'Text length', signature: 'LEN(text)' },
-  { name: 'TRIM', description: 'Remove leading/trailing spaces', signature: 'TRIM(text)' },
-  { name: 'UPPER', description: 'Convert to uppercase', signature: 'UPPER(text)' },
-  { name: 'LOWER', description: 'Convert to lowercase', signature: 'LOWER(text)' },
-  { name: 'SUBSTITUTE', description: 'Replace occurrences of text', signature: 'SUBSTITUTE(text, old, new)' },
+  {
+    name: 'CONCAT', description: 'Join text values', signature: 'CONCAT(a, b, ...)',
+    parameters: [{ name: 'values', type: 'string', description: 'Text values to join', rest: true }],
+  },
+  {
+    name: 'LEFT', description: 'First N characters', signature: 'LEFT(text, count)',
+    parameters: [
+      { name: 'text', type: 'string', description: 'The source text' },
+      { name: 'count', type: 'number', description: 'Number of characters' },
+    ],
+  },
+  {
+    name: 'RIGHT', description: 'Last N characters', signature: 'RIGHT(text, count)',
+    parameters: [
+      { name: 'text', type: 'string', description: 'The source text' },
+      { name: 'count', type: 'number', description: 'Number of characters' },
+    ],
+  },
+  {
+    name: 'MID', description: 'Substring from position', signature: 'MID(text, start, count)',
+    parameters: [
+      { name: 'text', type: 'string', description: 'The source text' },
+      { name: 'start', type: 'number', description: 'Start position (1-based)' },
+      { name: 'count', type: 'number', description: 'Number of characters' },
+    ],
+  },
+  {
+    name: 'LEN', description: 'Text length', signature: 'LEN(text)',
+    parameters: [{ name: 'text', type: 'string', description: 'The text to measure' }],
+  },
+  {
+    name: 'TRIM', description: 'Remove leading/trailing spaces', signature: 'TRIM(text)',
+    parameters: [{ name: 'text', type: 'string', description: 'The text to trim' }],
+  },
+  {
+    name: 'UPPER', description: 'Convert to uppercase', signature: 'UPPER(text)',
+    parameters: [{ name: 'text', type: 'string', description: 'The text to convert' }],
+  },
+  {
+    name: 'LOWER', description: 'Convert to lowercase', signature: 'LOWER(text)',
+    parameters: [{ name: 'text', type: 'string', description: 'The text to convert' }],
+  },
+  {
+    name: 'SUBSTITUTE', description: 'Replace occurrences of text', signature: 'SUBSTITUTE(text, old, new)',
+    parameters: [
+      { name: 'text', type: 'string', description: 'The source text' },
+      { name: 'old', type: 'string', description: 'Text to find' },
+      { name: 'new', type: 'string', description: 'Replacement text' },
+    ],
+  },
 
   // URL
-  { name: 'URLENCODE', description: 'URL-encode text', signature: 'URLENCODE(text)' },
-  { name: 'URLDECODE', description: 'URL-decode text', signature: 'URLDECODE(text)' },
+  {
+    name: 'URLENCODE', description: 'URL-encode text', signature: 'URLENCODE(text)',
+    parameters: [{ name: 'text', type: 'string', description: 'The text to encode' }],
+  },
+  {
+    name: 'URLDECODE', description: 'URL-decode text', signature: 'URLDECODE(text)',
+    parameters: [{ name: 'text', type: 'string', description: 'The text to decode' }],
+  },
 
   // Logical
-  { name: 'IF', description: 'Conditional value', signature: 'IF(condition, then, else)' },
-  { name: 'AND', description: 'True if all are true', signature: 'AND(a, b, ...)' },
-  { name: 'OR', description: 'True if any is true', signature: 'OR(a, b, ...)' },
-  { name: 'NOT', description: 'Negate a boolean', signature: 'NOT(value)' },
-  { name: 'IFERROR', description: 'Fallback on error', signature: 'IFERROR(value, fallback)' },
+  {
+    name: 'IF', description: 'Conditional value', signature: 'IF(condition, then, else)',
+    parameters: [
+      { name: 'condition', type: 'boolean', description: 'The condition to test' },
+      { name: 'then', type: 'any', description: 'Value if true' },
+      { name: 'else', type: 'any', description: 'Value if false' },
+    ],
+  },
+  {
+    name: 'AND', description: 'True if all are true', signature: 'AND(a, b, ...)',
+    parameters: [{ name: 'values', type: 'boolean', description: 'Boolean values to test', rest: true }],
+  },
+  {
+    name: 'OR', description: 'True if any is true', signature: 'OR(a, b, ...)',
+    parameters: [{ name: 'values', type: 'boolean', description: 'Boolean values to test', rest: true }],
+  },
+  {
+    name: 'NOT', description: 'Negate a boolean', signature: 'NOT(value)',
+    parameters: [{ name: 'value', type: 'boolean', description: 'The value to negate' }],
+  },
+  {
+    name: 'IFERROR', description: 'Fallback on error', signature: 'IFERROR(value, fallback)',
+    parameters: [
+      { name: 'value', type: 'any', description: 'The expression to try' },
+      { name: 'fallback', type: 'any', description: 'Value if error occurs' },
+    ],
+  },
 
   // Type / Utility
-  { name: 'ISNUMBER', description: 'True if value is numeric', signature: 'ISNUMBER(value)' },
-  { name: 'ISBLANK', description: 'True if value is empty', signature: 'ISBLANK(value)' },
-  { name: 'VALUE', description: 'Convert text to number', signature: 'VALUE(text)' },
-  { name: 'TEXT', description: 'Convert to text', signature: 'TEXT(value)' },
-  { name: 'COALESCE', description: 'First non-null value', signature: 'COALESCE(a, b, ...)' },
+  {
+    name: 'ISNUMBER', description: 'True if value is numeric', signature: 'ISNUMBER(value)',
+    parameters: [{ name: 'value', type: 'any', description: 'The value to test' }],
+  },
+  {
+    name: 'ISBLANK', description: 'True if value is empty', signature: 'ISBLANK(value)',
+    parameters: [{ name: 'value', type: 'any', description: 'The value to test' }],
+  },
+  {
+    name: 'VALUE', description: 'Convert text to number', signature: 'VALUE(text)',
+    parameters: [{ name: 'text', type: 'string', description: 'The text to convert' }],
+  },
+  {
+    name: 'TEXT', description: 'Convert to text', signature: 'TEXT(value)',
+    parameters: [{ name: 'value', type: 'any', description: 'The value to convert' }],
+  },
+  {
+    name: 'COALESCE', description: 'First non-null value', signature: 'COALESCE(a, b, ...)',
+    parameters: [{ name: 'values', type: 'any', description: 'Values to check', rest: true }],
+  },
 ];

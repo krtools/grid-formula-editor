@@ -107,10 +107,14 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         const suggs = getSuggestions(ctx, columns, functionDefs);
         setSuggestions(suggs);
         setSelectedIndex(suggs.length > 0 ? 0 : -1);
-        setShowDropdown(suggs.length > 0 && isFocused);
+
+        // Show dropdown for suggestions or function-arg signature hints
+        const hasSignatureHint = ctx.type === 'function-arg' &&
+          functionDefs.some(f => f.name.toUpperCase() === ctx.functionName.toUpperCase() && f.parameters && f.parameters.length > 0);
+        setShowDropdown((suggs.length > 0 || hasSignatureHint) && isFocused);
 
         // Position dropdown
-        if (editorRef.current && suggs.length > 0) {
+        if (editorRef.current && (suggs.length > 0 || hasSignatureHint)) {
           updateDropdownPosition();
         }
 
@@ -384,6 +388,14 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         ? ctx.partial
         : undefined;
 
+    // Build signature hint info when inside a function call
+    const signatureHint = React.useMemo(() => {
+      if (ctx.type !== 'function-arg') return undefined;
+      const fn = functionDefs.find(f => f.name.toUpperCase() === ctx.functionName.toUpperCase());
+      if (!fn?.parameters || fn.parameters.length === 0) return undefined;
+      return { functionDef: fn, argIndex: ctx.argIndex };
+    }, [ctx, functionDefs]);
+
     return (
       <div className={className} style={containerStyles}>
         <div
@@ -419,6 +431,7 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
           styles={stylesProp}
           visible={showDropdown}
           partial={partial}
+          signatureHint={signatureHint}
         />
       </div>
     );

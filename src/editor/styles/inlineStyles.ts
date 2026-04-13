@@ -200,3 +200,44 @@ export function getErrorIndicatorStyle(
     fontFamily: 'inherit',
   };
 }
+
+export function getSignatureHintStyle(
+  colors: Required<FormulaColorConfig>,
+  styles: Required<FormulaStyleConfig>,
+): React.CSSProperties {
+  return {
+    padding: '4px 10px',
+    fontSize: '12px',
+    fontFamily: styles.fontFamily,
+    color: colors.text,
+    borderBottom: `1px solid ${styles.dropdownBorderColor}`,
+    lineHeight: '1.6',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  };
+}
+
+export function getSignatureParamStyle(
+  isActive: boolean,
+  colors: Required<FormulaColorConfig>,
+): React.CSSProperties {
+  return {
+    fontWeight: isActive ? 700 : 400,
+    color: isActive ? colors.functionName : colors.text,
+    textDecoration: isActive ? 'underline' : 'none',
+    textUnderlineOffset: '2px',
+  };
+}
+
+export function getSignatureDescStyle(
+  colors: Required<FormulaColorConfig>,
+): React.CSSProperties {
+  return {
+    display: 'block',
+    fontSize: '11px',
+    opacity: 0.7,
+    color: colors.text,
+    marginTop: '1px',
+  };
+}

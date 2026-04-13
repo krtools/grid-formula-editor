@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import { AutocompleteSuggestion } from '../types.js';
+import { AutocompleteSuggestion, FunctionDef } from '../types.js';
 import { FormulaColorConfig, FormulaStyleConfig } from '../types.js';
 import {
   mergeColors,
@@ -10,7 +10,15 @@ import {
   getDropdownItemLabelStyle,
   getDropdownItemDescStyle,
   getDropdownItemTypeStyle,
+  getSignatureHintStyle,
+  getSignatureParamStyle,
+  getSignatureDescStyle,
 } from '../styles/inlineStyles.js';
+
+interface SignatureHintInfo {
+  functionDef: FunctionDef;
+  argIndex: number;
+}
 
 interface AutocompleteDropdownProps {
   suggestions: AutocompleteSuggestion[];
@@ -21,6 +29,7 @@ interface AutocompleteDropdownProps {
   styles?: FormulaStyleConfig;
   visible: boolean;
   partial?: string;
+  signatureHint?: SignatureHintInfo;
 }
 
 function highlightMatch(
@@ -65,6 +74,7 @@ export function AutocompleteDropdown({
   styles,
   visible,
   partial,
+  signatureHint,
 }: AutocompleteDropdownProps) {
   const portalRef = React.useRef<HTMLDivElement | null>(null);
   const listRef = React.useRef<HTMLDivElement | null>(null);
@@ -90,7 +100,10 @@ export function AutocompleteDropdown({
     }
   }, [selectedIndex]);
 
-  if (!portalRef.current || !visible || suggestions.length === 0 || !position) {
+  const hasSignature = signatureHint?.functionDef.parameters && signatureHint.functionDef.parameters.length > 0;
+  const hasSuggestions = suggestions.length > 0;
+
+  if (!portalRef.current || !visible || (!hasSuggestions && !hasSignature) || !position) {
     return null;
   }
 
@@ -102,8 +115,45 @@ export function AutocompleteDropdown({
     left: `${position.left}px`,
   };
 
+  // Build signature hint header
+  let signatureHeader: React.ReactNode = null;
+  if (hasSignature && signatureHint) {
+    const { functionDef, argIndex } = signatureHint;
+    const params = functionDef.parameters!;
+    const activeParam = params[Math.min(argIndex, params.length - 1)];
+    const isRestParam = activeParam?.rest;
+
+    signatureHeader = (
+      <div style={getSignatureHintStyle(mergedColors, mergedStyles)}>
+        <span>{functionDef.name}(</span>
+        {params.map((p, i) => {
+          // For rest params, the active index can exceed the param list length
+          const isActive = isRestParam
+            ? i === params.length - 1 && argIndex >= i
+            : i === argIndex;
+          return (
+            <React.Fragment key={p.name}>
+              {i > 0 && <span>, </span>}
+              <span style={getSignatureParamStyle(isActive, mergedColors)}>
+                {p.rest ? `...${p.name}` : p.name}
+                {p.optional ? '?' : ''}
+              </span>
+            </React.Fragment>
+          );
+        })}
+        <span>)</span>
+        {activeParam?.description && (
+          <span style={getSignatureDescStyle(mergedColors)}>
+            {activeParam.name}: {activeParam.description}
+          </span>
+        )}
+      </div>
+    );
+  }
+
   const content = (
     <div style={dropdownStyle} ref={listRef} onMouseDown={e => e.preventDefault()}>
+      {signatureHeader}
       {suggestions.map((suggestion, i) => {
         const isSelected = i === selectedIndex;
         const itemStyle = getDropdownItemStyle(isSelected, mergedColors, mergedStyles);

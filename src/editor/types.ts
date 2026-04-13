@@ -11,6 +11,20 @@ export interface ColumnDef {
   description?: string;
 }
 
+/** Parameter definition for a function. */
+export interface FunctionParamDef {
+  /** Parameter name. */
+  name: string;
+  /** Type hint (e.g. 'number', 'string', 'boolean', 'any'). */
+  type?: string;
+  /** Description of this parameter. */
+  description?: string;
+  /** Whether the parameter is optional. */
+  optional?: boolean;
+  /** Whether this is a variadic rest parameter (e.g. CONCAT(...values)). */
+  rest?: boolean;
+}
+
 /** Function definition for autocomplete suggestions. */
 export interface FunctionDef {
   /** Function name (e.g. "ROUND", "IF"). */
@@ -19,6 +33,8 @@ export interface FunctionDef {
   description?: string;
   /** Signature hint (e.g. "ROUND(value, decimals)"). */
   signature?: string;
+  /** Parameter definitions for signature hints. */
+  parameters?: FunctionParamDef[];
 }
 
 /**
