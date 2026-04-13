@@ -4,21 +4,41 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.ts",
+      "default": "./dist/editor/index.js"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "vite build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "author": "Kyle Rector <krtools@users.noreply.github.com>",
   "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
   "devDependencies": {
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.4.0",
+    "vite": "^5.4.21",
+    "vite-plugin-dts": "^3.9.1",
     "vitest": "^2.0.0"
   }
 }
