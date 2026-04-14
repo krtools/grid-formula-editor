@@ -1,5 +1,5 @@
 {
-  "name": "ag-grid-formulas",
+  "name": "grid-formula-editor",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",

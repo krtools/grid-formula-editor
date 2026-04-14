@@ -1,4 +1,4 @@
-# ag-grid-formulas
+# grid-formula-editor
 
 A cell-formula engine for table data. Formulas reference columns **by name** and
 evaluate **per row** — there is no cross-row addressing. Think of it as a
@@ -8,13 +8,13 @@ fills in computed columns.
 ## Install
 
 ```bash
-npm install ag-grid-formulas
+npm install grid-formula-editor
 ```
 
 ## Quick start
 
 ```ts
-import { compile } from 'ag-grid-formulas';
+import { compile } from 'grid-formula-editor';
 
 const processor = compile({
   columns: [
@@ -647,15 +647,14 @@ processor.process({ revenue: 0, cost: 100, region: null, country: null });
 A rich editor component for authoring formulas with syntax highlighting,
 real-time validation, and autocomplete. Requires React >=16.8.
 
-```bash
-# The editor is a separate entry point — the core engine has zero dependencies
-import { FormulaEditor } from 'ag-grid-formulas/editor';
+```ts
+import { FormulaEditor } from 'grid-formula-editor';
 ```
 
 ### Basic usage
 
 ```tsx
-import { FormulaEditor } from 'ag-grid-formulas/editor';
+import { FormulaEditor } from 'grid-formula-editor';
 
 function App() {
   return (
@@ -725,7 +724,7 @@ The editor uses inline styles only — no CSS files. Override colors and
 layout with the `colors` and `styles` props.
 
 ```tsx
-import { DARK_COLORS } from 'ag-grid-formulas/editor';
+import { DARK_COLORS } from 'grid-formula-editor';
 
 <FormulaEditor
   columns={columns}
@@ -778,10 +777,9 @@ interface FormulaChangeInfo {
 
 ### Architecture
 
-The editor is exported from `ag-grid-formulas/editor` as a separate entry
-point, so the core formula engine (`ag-grid-formulas`) remains dependency-free.
-React is an optional peer dependency — if you only use the core engine, you
-don't need React installed.
+Everything is exported from a single package entry point. React is an optional
+peer dependency — if you only use the core formula engine functions (`compile`,
+`parse`, `tokenize`, etc.), you don't need React installed.
 
 ---
 
