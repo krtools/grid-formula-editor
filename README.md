@@ -5,6 +5,8 @@ evaluate **per row** — there is no cross-row addressing. Think of it as a
 post-processing stage: your rows arrive with raw data, and the formula engine
 fills in computed columns.
 
+[Live Demo](https://krtools.github.io/grid-formula-editor/)
+
 ## Install
 
 ```bash
