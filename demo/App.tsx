@@ -255,7 +255,8 @@ export function App() {
   const colors: FormulaColorConfig | undefined = isDark ? DARK_COLORS : undefined;
 
   return (
-    <div style={{ ...pageStyle, ...darkPage, minHeight: '100vh' }}>
+    <div style={{ minHeight: '100vh', ...darkPage }}>
+    <div style={pageStyle}>
       <h1 style={headerStyle}>FormulaEditor Demo</h1>
       <p style={{ ...subheaderStyle, ...(isDark ? { color: '#8b949e' } : {}) }}>
         Type a formula below. Columns and functions autocomplete as you type.
@@ -361,6 +362,7 @@ export function App() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
