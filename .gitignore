@@ -1,6 +1,8 @@
 node_modules/
 dist/
 demo-dist/
+.claude/
+.vitest-attachments/
 
 # IDEs
 .idea/
