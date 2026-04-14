@@ -370,7 +370,12 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         setInternalValue(newFormula);
       }
       processFormula(newFormula, newCursorPos);
-      setShowDropdown(false);
+
+      // Hide the suggestion list, but keep dropdown open if we just entered
+      // a function call (e.g. inserting "IF(" should show parameter hints)
+      if (!suggestion.insertText.endsWith('(')) {
+        setShowDropdown(false);
+      }
     }
 
     function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
