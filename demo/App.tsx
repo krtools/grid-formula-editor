@@ -42,7 +42,6 @@ const pageStyle: React.CSSProperties = {
   maxWidth: 960,
   margin: '0 auto',
   padding: '32px 24px',
-  color: '#1f2328',
 };
 
 const headerStyle: React.CSSProperties = {
@@ -226,7 +225,7 @@ export function App() {
 
   const darkPage: React.CSSProperties = isDark
     ? { background: '#0d1117', color: '#c9d1d9' }
-    : {};
+    : { color: '#1f2328' };
 
   const darkTable: React.CSSProperties = isDark
     ? { background: '#161b22', color: '#c9d1d9' }
