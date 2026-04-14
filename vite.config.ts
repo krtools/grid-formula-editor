@@ -13,11 +13,9 @@ export default defineConfig({
   build: {
     minify: false,
     lib: {
-      entry: {
-        index: path.resolve(__dirname, 'src/index.ts'),
-        'editor/index': path.resolve(__dirname, 'src/editor/index.ts'),
-      },
+      entry: path.resolve(__dirname, 'src/index.ts'),
       formats: ['es'],
+      fileName: 'index',
     },
     rollupOptions: {
       external: ['react', 'react-dom', 'react/jsx-runtime'],
