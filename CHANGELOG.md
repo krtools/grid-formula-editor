@@ -7,19 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-16
+
 ### Added
 
 - Self-column-references: a formula may reference the column it's defining (e.g. `price: 'price * 1.1'`). The reference resolves to the column's pre-formula input value, taken from a per-row snapshot built at the start of `process(row)`. `SELF()` is provided as a rename-safe alias for the same behavior.
 
 ### Changed
 
+- Dependency cycle detection now ignores self-edges. A formula like `price: 'price + 1'` no longer triggers `CIRCULAR_REFERENCE` — it's a self-transform, not a cycle. Mutual cycles (A → B → A) are still rejected.
 - Autocomplete caret placement: for zero-arg functions (`BAIL()`, `SELF()`), the caret is placed after the closing paren on insert. Functions with parameters still get the caret placed between the parens so the user can start typing the first argument.
 - Matching-paren highlighting is suppressed when the open/close parens are adjacent (empty body, e.g. `BAIL()`). Highlighting a pair with nothing between them added no information and produced a visual artifact at the span boundary.
 
 ### Fixed
 
 - Matching-paren highlight occasionally rendered as a 2px stripe on the left edge of a paren (e.g. the outer `)` in `(SELF())`). The rect measurement used `getClientRects()[0]`, which returned a leading zero-width rect at the span boundary when the range started at the end of the prior token's text node. Switched to `getBoundingClientRect()`, which unions the fragments and returns the correct glyph bounds.
-- Dependency cycle detection now ignores self-edges. A formula like `price: 'price + 1'` no longer triggers `CIRCULAR_REFERENCE` — it's a self-transform, not a cycle. Mutual cycles (A → B → A) are still rejected.
 
 ## [0.1.0] - 2026-04-16
 
@@ -61,5 +63,6 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/krtools/grid-formula-editor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/krtools/grid-formula-editor/releases/tag/v0.1.0
