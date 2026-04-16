@@ -111,6 +111,10 @@ export function MatchingParens({ tokens, cursorOffset, editorElement, hasFocus }
     const pair = findMatchingPair(tokens, cursorOffset);
     if (!pair) { setRects([]); return; }
     const [open, close] = pair;
+    // Skip highlighting when the parens are adjacent (empty body). There's
+    // nothing meaningful to guide the eye to, and rendering two narrow rects
+    // right next to each other looks like a visual artifact.
+    if (open.end === close.start) { setRects([]); return; }
     const r1 = measureRect(editorElement, open.start, open.end);
     const r2 = measureRect(editorElement, close.start, close.end);
     const next: Array<{ left: number; top: number; width: number; height: number }> = [];
