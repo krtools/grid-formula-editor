@@ -78,6 +78,10 @@ export function AutocompleteDropdown({
 }: AutocompleteDropdownProps) {
   const portalRef = React.useRef<HTMLDivElement | null>(null);
   const listRef = React.useRef<HTMLDivElement | null>(null);
+  // Refs to each suggestion div, keyed by suggestion index. Using a ref array
+  // rather than listRef.children avoids an off-by-one when the signature hint
+  // header is rendered as the first child of the dropdown.
+  const itemRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
   // Create/destroy portal container
   React.useEffect(() => {
@@ -92,11 +96,10 @@ export function AutocompleteDropdown({
 
   // Scroll selected item into view
   React.useEffect(() => {
-    if (listRef.current && selectedIndex >= 0) {
-      const item = listRef.current.children[selectedIndex] as HTMLElement;
-      if (item) {
-        item.scrollIntoView({ block: 'nearest' });
-      }
+    if (selectedIndex < 0) return;
+    const item = itemRefs.current[selectedIndex];
+    if (item) {
+      item.scrollIntoView({ block: 'nearest' });
     }
   }, [selectedIndex]);
 
@@ -161,6 +164,9 @@ export function AutocompleteDropdown({
         return (
           <div
             key={`${suggestion.type}-${suggestion.name}`}
+            ref={el => {
+              itemRefs.current[i] = el;
+            }}
             style={itemStyle}
             onClick={() => onSelect(suggestion)}
             onMouseEnter={e => {

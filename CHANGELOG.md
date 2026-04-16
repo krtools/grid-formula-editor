@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Autocomplete dropdown now correctly scrolls the selected item into view when the signature hint header is showing. Previously the scroll targeted the item one above the selection because `listRef.children` was shifted by the header element — End jumped past the visible area, and arrow-up landed the selection one row below the viewport top.
+
 ## [0.1.0] - 2026-04-16
 
 Initial release.

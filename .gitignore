@@ -18,6 +18,9 @@ Thumbs.db
 # Coverage / test
 coverage/
 
+# npm pack output
+*.tgz
+
 # Env
 .env
 .env.*
