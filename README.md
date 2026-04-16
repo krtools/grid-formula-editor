@@ -1,4 +1,4 @@
-# grid-formula-editor
+# @krllc/table-formulas
 
 A cell-formula engine for table data. Formulas reference columns **by name** and
 evaluate **per row** — there is no cross-row addressing. Think of it as a
@@ -10,13 +10,13 @@ fills in computed columns.
 ## Install
 
 ```bash
-npm install grid-formula-editor
+npm install @krllc/table-formulas
 ```
 
 ## Quick start
 
 ```ts
-import { compile } from 'grid-formula-editor';
+import { compile } from '@krllc/table-formulas';
 
 const processor = compile({
   columns: [
@@ -685,13 +685,13 @@ A rich editor component for authoring formulas with syntax highlighting,
 real-time validation, and autocomplete. Requires React >=16.8.
 
 ```ts
-import { FormulaEditor } from 'grid-formula-editor';
+import { FormulaEditor } from '@krllc/table-formulas';
 ```
 
 ### Basic usage
 
 ```tsx
-import { FormulaEditor } from 'grid-formula-editor';
+import { FormulaEditor } from '@krllc/table-formulas';
 
 function App() {
   return (
@@ -761,7 +761,7 @@ The editor uses inline styles only — no CSS files. Override colors and
 layout with the `colors` and `styles` props.
 
 ```tsx
-import { DARK_COLORS } from 'grid-formula-editor';
+import { DARK_COLORS } from '@krllc/table-formulas';
 
 <FormulaEditor
   columns={columns}
