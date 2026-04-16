@@ -99,6 +99,6 @@ function functionToSuggestion(f: FunctionDef): AutocompleteSuggestion {
     name: f.name,
     displayName: f.name,
     description: f.description || f.signature,
-    insertText: f.name + '(',
+    insertText: f.name,
   };
 }

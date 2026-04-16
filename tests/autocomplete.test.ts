@@ -51,12 +51,12 @@ describe('getSuggestions', () => {
     expect(firstName!.insertText).toBe('[First Name]');
   });
 
-  it('appends ( for function suggestions', () => {
+  it('function suggestions insertText is the bare name (parens handled by editor)', () => {
     const ctx = getCursorContext('ROUND', 5);
     const suggs = getSuggestions(ctx, columns, functions);
     const round = suggs.find(s => s.name === 'ROUND');
     expect(round).toBeDefined();
-    expect(round!.insertText).toBe('ROUND(');
+    expect(round!.insertText).toBe('ROUND');
   });
 
   it('bracket-column context only suggests columns', () => {

@@ -295,4 +295,70 @@ describe('FormulaEditor browser tests', () => {
     });
     expect(selected).toBe(true);
   });
+
+  it('selecting a function suggestion inserts () and places caret between', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    let lastFormula = '';
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+        onChange: (formula: string) => { lastFormula = formula; },
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.type(locator, 'ROU');
+    await waitFor(() => {
+      const items = document.querySelectorAll('[style*="z-index"]');
+      for (const item of items) {
+        if (item.textContent?.includes('ROUND')) return true;
+      }
+      return false;
+    });
+    await userEvent.keyboard('{Tab}');
+    await waitFor(() => lastFormula === 'ROUND()');
+    expect(handleRef!.getValue()).toBe('ROUND()');
+    // Continuing to type should land inside the parens
+    await userEvent.type(locator, 'x');
+    await waitFor(() => handleRef!.getValue() === 'ROUND(x)');
+    expect(handleRef!.getValue()).toBe('ROUND(x)');
+  });
+
+  it('selecting a function does not duplicate parens when they already follow', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    let lastFormula = '';
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        defaultValue: 'r()',
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+        onChange: (formula: string) => { lastFormula = formula; },
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Put caret right after `r` (offset 1) using Home + ArrowRight
+    await userEvent.keyboard('{Home}{ArrowRight}');
+    // Trigger autocomplete — ctx.type is 'function' here because `(` already follows
+    await userEvent.keyboard('{Control>} {/Control}');
+    await waitFor(() => {
+      const items = document.querySelectorAll('[style*="z-index"]');
+      for (const item of items) {
+        if (item.textContent?.includes('ROUND')) return true;
+      }
+      return false;
+    });
+    await userEvent.keyboard('{Tab}');
+    await waitFor(() => lastFormula === 'ROUND()');
+    expect(handleRef!.getValue()).toBe('ROUND()');
+    // Typing should land between the existing parens (caret was moved past `(`)
+    await userEvent.type(locator, '1');
+    await waitFor(() => handleRef!.getValue() === 'ROUND(1)');
+    expect(handleRef!.getValue()).toBe('ROUND(1)');
+  });
 });

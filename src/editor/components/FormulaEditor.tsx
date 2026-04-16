@@ -470,9 +470,34 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       }
 
       const formula = formulaValue;
+
+      // For function suggestions, we auto-inject `()` and place the caret
+      // between them — unless a `(` already follows (ctx.type === 'function'
+      // means the tokenizer already saw an LPAREN after the identifier), in
+      // which case we skip the parens and jump the caret past the existing one.
+      let insertText = suggestion.insertText;
+      let newCursorPos: number;
+
+      if (suggestion.type === 'function') {
+        if (ctx.type === 'function') {
+          // Parens already exist — just replace the identifier, caret goes
+          // past the next `(` in the remaining source.
+          const afterReplace = formula.slice(replaceEnd);
+          const parenRel = afterReplace.indexOf('(');
+          newCursorPos =
+            parenRel >= 0
+              ? replaceStart + insertText.length + parenRel + 1
+              : replaceStart + insertText.length;
+        } else {
+          insertText = insertText + '()';
+          newCursorPos = replaceStart + insertText.length - 1;
+        }
+      } else {
+        newCursorPos = replaceStart + insertText.length;
+      }
+
       const newFormula =
-        formula.slice(0, replaceStart) + suggestion.insertText + formula.slice(replaceEnd);
-      const newCursorPos = replaceStart + suggestion.insertText.length;
+        formula.slice(0, replaceStart) + insertText + formula.slice(replaceEnd);
 
       // Discrete operation — push to undo stack, clear typing group
       if (typingGroupTimerRef.current) {
@@ -488,9 +513,9 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       }
       processFormula(newFormula, newCursorPos);
 
-      // Hide the suggestion list, but keep dropdown open if we just entered
-      // a function call (e.g. inserting "IF(" should show parameter hints)
-      if (!suggestion.insertText.endsWith('(')) {
+      // Keep dropdown open after a function insertion so the parameter hint
+      // shows up for the just-entered call.
+      if (suggestion.type !== 'function') {
         setShowDropdown(false);
       }
     }
