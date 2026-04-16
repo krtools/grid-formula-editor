@@ -230,4 +230,8 @@ export const BUILTIN_FUNCTIONS: FunctionDef[] = [
     name: 'COALESCE', description: 'First non-null value', signature: 'COALESCE(a, b, ...)',
     parameters: [{ name: 'values', type: 'any', description: 'Values to check', rest: true }],
   },
+  {
+    name: 'BAIL', description: 'Force the whole formula to empty (uncatchable)', signature: 'BAIL()',
+    parameters: [],
+  },
 ];

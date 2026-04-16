@@ -107,6 +107,8 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
 
       for (const col of evalOrder) {
         const ctx: EvalContext = {
+          bailed: false,
+
           getColumn(name: string): unknown {
             if (formulaValues.has(name)) return formulaValues.get(name);
             try {
@@ -140,9 +142,24 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
 
         try {
           const value = evaluate(col.ast, ctx);
+          // BAIL() produces a blank value, not an error. If the formula
+          // bailed, discard whatever the AST ultimately returned.
+          if (ctx.bailed) {
+            formulaValues.set(col.name, null);
+            set(row, col.name, null, col.refs);
+            continue;
+          }
           formulaValues.set(col.name, value);
           set(row, col.name, value, col.refs);
         } catch (cause) {
+          // Downstream errors after BAIL are absorbed — once bailed, the
+          // formula's output is null regardless of what else blew up.
+          if (ctx.bailed) {
+            formulaValues.set(col.name, null);
+            set(row, col.name, null, col.refs);
+            continue;
+          }
+
           let code: FormulaErrorCode = 'EVAL_ERROR';
           let severity: FormulaErrorSeverity = 'error';
           let originalCause: unknown = cause;

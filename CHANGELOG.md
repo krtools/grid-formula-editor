@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `BAIL()` function: forces the entire formula to produce a blank (null) value, uncatchable by `IFERROR`. Useful for terminating evaluation from deep inside nested expressions when a precondition fails. Implemented with a context flag rather than a thrown sentinel so user-visible control flow isn't modeled as an exception.
+
 ### Fixed
 
 - Autocomplete dropdown now correctly scrolls the selected item into view when the signature hint header is showing. Previously the scroll targeted the item one above the selection because `listRef.children` was shifted by the header element — End jumped past the visible area, and arrow-up landed the selection one row below the viewport top.

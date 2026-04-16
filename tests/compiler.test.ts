@@ -322,6 +322,66 @@ describe('conditional logic', () => {
 });
 
 // ============================================================
+// BAIL
+// ============================================================
+
+describe('BAIL', () => {
+  it('bails to null at top level', () => {
+    const proc = makeProcessor({ result: 'BAIL()' });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+
+  it('bails from inside IF', () => {
+    const proc = makeProcessor({ result: 'IF(flag, BAIL(), 42)' });
+    const row: Row = { flag: true };
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+
+  it('IFERROR does not catch BAIL', () => {
+    const proc = makeProcessor({ result: 'IFERROR(BAIL(), 99)' });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+
+  it('IFERROR does not mask a bail when a real error follows in the same expression', () => {
+    // BAIL() sets the flag, 1/0 throws — IFERROR must not return the fallback.
+    const proc = makeProcessor({ result: 'IFERROR(BAIL() + a / b, 99)' });
+    const row: Row = { a: 1, b: 0 };
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+
+  it('BAIL in one column does not affect another', () => {
+    const proc = makeProcessor({
+      a: 'BAIL()',
+      b: 'x * 2',
+    });
+    const row: Row = { x: 5 };
+    proc.process(row);
+    expect(row.a).toBeNull();
+    expect(row.b).toBe(10);
+  });
+
+  it('does not route through onError', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [{ name: 'r', formula: 'BAIL()' }],
+      get: (row, col) => row[col],
+      set: (row, col, value) => { row[col] = value; },
+      onError: (e) => { errors.push(e); },
+    });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.r).toBeNull();
+    expect(errors).toHaveLength(0);
+  });
+});
+
+// ============================================================
 // Math functions
 // ============================================================
 

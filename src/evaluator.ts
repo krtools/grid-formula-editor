@@ -4,6 +4,13 @@ import { toNumber, toBoolean, toString } from './coerce.js';
 export interface EvalContext {
   getColumn: (name: string) => unknown;
   callFunction: (name: string, args: unknown[]) => unknown;
+  /**
+   * Set to true by BAIL(). The compiler checks this after evaluation and
+   * produces a blank (null) value regardless of what the AST returned.
+   * Evaluation continues after a bail — wasted work is the price for keeping
+   * the check sites to two (here: IFERROR's catch, plus the compiler top-level).
+   */
+  bailed: boolean;
 }
 
 export function evaluate(node: ASTNode, ctx: EvalContext): unknown {
@@ -52,9 +59,18 @@ function evaluateFunction(name: string, args: ASTNode[], ctx: EvalContext): unkn
     case 'IFERROR': {
       try {
         return evaluate(args[0], ctx);
-      } catch {
+      } catch (e) {
+        // BAIL is uncatchable. If the try block evaluated BAIL() and then
+        // something downstream threw a real error, we must re-throw rather
+        // than return the fallback — otherwise IFERROR masks the bail intent.
+        if (ctx.bailed) throw e;
         return args.length > 1 ? evaluate(args[1], ctx) : null;
       }
+    }
+
+    case 'BAIL': {
+      ctx.bailed = true;
+      return undefined;
     }
 
     case 'AND': {
