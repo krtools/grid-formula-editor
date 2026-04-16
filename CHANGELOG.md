@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Autocomplete caret placement: for zero-arg functions (`BAIL()`, `SELF()`), the caret is placed after the closing paren on insert. Functions with parameters still get the caret placed between the parens so the user can start typing the first argument.
 - Dependency cycle detection now ignores self-edges. A formula like `price: 'price + 1'` no longer triggers `CIRCULAR_REFERENCE` — it's a self-transform, not a cycle. Mutual cycles (A → B → A) are still rejected.
 
 ## [0.1.0] - 2026-04-16

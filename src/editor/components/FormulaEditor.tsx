@@ -514,7 +514,13 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
               : replaceStart + insertText.length;
         } else {
           insertText = insertText + '()';
-          newCursorPos = replaceStart + insertText.length - 1;
+          const def = functionDefs.find(
+            f => f.name.toUpperCase() === suggestion.name.toUpperCase(),
+          );
+          const isZeroArg = def?.parameters?.length === 0;
+          newCursorPos = isZeroArg
+            ? replaceStart + insertText.length
+            : replaceStart + insertText.length - 1;
         }
       } else {
         newCursorPos = replaceStart + insertText.length;
