@@ -219,6 +219,53 @@ describe('FormulaEditor browser tests', () => {
     expect(dropdownAppeared).toBe(true);
   });
 
+  it('typing ( with a selection wraps it in parens', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    let lastFormula = 'price';
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        defaultValue: 'price',
+        columns: COLUMNS,
+        onChange: (formula: string) => { lastFormula = formula; },
+      } as any),
+    );
+
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+
+    // Select all
+    await userEvent.keyboard('{Control>}a{/Control}');
+    // Type opening paren
+    await userEvent.keyboard('(');
+
+    await waitFor(() => lastFormula === '(price)');
+    expect(handleRef!.getValue()).toBe('(price)');
+  });
+
+  it('typing " with a selection wraps it in double quotes', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    let lastFormula = 'hello';
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        defaultValue: 'hello',
+        columns: COLUMNS,
+        onChange: (formula: string) => { lastFormula = formula; },
+      } as any),
+    );
+
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('{Control>}a{/Control}');
+    await userEvent.keyboard('"');
+
+    await waitFor(() => lastFormula === '"hello"');
+    expect(handleRef!.getValue()).toBe('"hello"');
+  });
+
   it('End key jumps selection to last dropdown item', async () => {
     renderInto(
       React.createElement(FormulaEditor, {

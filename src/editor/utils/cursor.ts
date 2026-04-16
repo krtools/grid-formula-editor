@@ -26,6 +26,32 @@ export function setCursorOffset(element: HTMLElement, offset: number): void {
   sel.addRange(range);
 }
 
+/** Return the current selection start and end as character offsets within `element`. */
+export function getSelectionRange(element: HTMLElement): { start: number; end: number } {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return { start: 0, end: 0 };
+  const range = sel.getRangeAt(0);
+  const start = countOffsetTo(element, range.startContainer, range.startOffset);
+  const end = countOffsetTo(element, range.endContainer, range.endOffset);
+  return { start: Math.min(start, end), end: Math.max(start, end) };
+}
+
+/** Select the character range [start, end) within a contentEditable element. */
+export function setSelectionRange(element: HTMLElement, start: number, end: number): void {
+  const sel = window.getSelection();
+  if (!sel) return;
+
+  const startPos = findNodeAtOffset(element, start);
+  const endPos = findNodeAtOffset(element, end);
+  if (!startPos || !endPos) return;
+
+  const range = document.createRange();
+  range.setStart(startPos.node, startPos.offset);
+  range.setEnd(endPos.node, endPos.offset);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 /** Walk text nodes to count character offset up to a specific DOM position. */
 function countOffsetTo(root: Node, targetNode: Node, targetOffset: number): number {
   let count = 0;

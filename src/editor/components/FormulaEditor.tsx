@@ -20,12 +20,20 @@ import {
 } from '../styles/inlineStyles.js';
 import { getCursorContext } from '../autocomplete/cursorContext.js';
 import { getSuggestions } from '../autocomplete/AutocompleteEngine.js';
-import { getCursorOffset, setCursorOffset } from '../utils/cursor.js';
+import { getCursorOffset, setCursorOffset, getSelectionRange, setSelectionRange } from '../utils/cursor.js';
 import { UndoStack } from '../utils/undoStack.js';
 import { validateFormula, FormulaValidationError } from '../validation/formulaValidator.js';
 import { buildHighlightedHTML } from './HighlightedContent.js';
 import { AutocompleteDropdown } from './AutocompleteDropdown.js';
 import { ValidationSquiggles } from './ValidationSquiggles.js';
+
+const WRAP_PAIRS: Record<string, string> = {
+  '(': ')',
+  '[': ']',
+  '"': '"',
+  "'": "'",
+  '`': '`',
+};
 
 /**
  * FormulaEditor — a contentEditable React component with syntax highlighting,
@@ -63,6 +71,7 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     const [showDropdown, setShowDropdown] = React.useState(false);
     const cursorContextRef = React.useRef<CursorContext>({ type: 'none' });
     const pendingCursorRef = React.useRef<number | null>(null);
+    const pendingSelectionRef = React.useRef<{ start: number; end: number } | null>(null);
     const undoStackRef = React.useRef(new UndoStack());
     const typingGroupTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -178,9 +187,14 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       [formulaValue, tokens, mergedColors],
     );
 
-    // Restore cursor after render
+    // Restore cursor or selection after render
     React.useLayoutEffect(() => {
-      if (pendingCursorRef.current !== null && editorRef.current && isFocused) {
+      if (!editorRef.current || !isFocused) return;
+      if (pendingSelectionRef.current !== null) {
+        setSelectionRange(editorRef.current, pendingSelectionRef.current.start, pendingSelectionRef.current.end);
+        pendingSelectionRef.current = null;
+        pendingCursorRef.current = null;
+      } else if (pendingCursorRef.current !== null) {
         setCursorOffset(editorRef.current, pendingCursorRef.current);
         pendingCursorRef.current = null;
       }
@@ -262,6 +276,36 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
       if (disabled || readOnly) return;
+
+      // Auto-wrap selection with brackets or quotes when the user types
+      // the opening character while something is selected.
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && WRAP_PAIRS[e.key]) {
+        const el = editorRef.current;
+        if (el) {
+          const { start, end } = getSelectionRange(el);
+          if (end > start) {
+            e.preventDefault();
+            const open = e.key;
+            const close = WRAP_PAIRS[open];
+            const formula = formulaValue;
+            const selected = formula.slice(start, end);
+            const newFormula = formula.slice(0, start) + open + selected + close + formula.slice(end);
+            const newSelStart = start + 1;
+            const newSelEnd = end + 1;
+
+            if (typingGroupTimerRef.current) {
+              clearTimeout(typingGroupTimerRef.current);
+              typingGroupTimerRef.current = null;
+            }
+            undoStackRef.current.push({ value: newFormula, cursorPos: newSelEnd });
+
+            pendingSelectionRef.current = { start: newSelStart, end: newSelEnd };
+            if (!isControlled) setInternalValue(newFormula);
+            processFormula(newFormula, newSelEnd);
+            return;
+          }
+        }
+      }
 
       // Ctrl+Space / Cmd+Space — manually trigger autocomplete
       if (e.key === ' ' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
