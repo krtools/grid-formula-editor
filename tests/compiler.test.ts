@@ -382,6 +382,76 @@ describe('BAIL', () => {
 });
 
 // ============================================================
+// REQUIRE
+// ============================================================
+
+describe('REQUIRE', () => {
+  it('returns the value when present', () => {
+    const proc = makeProcessor({ result: 'REQUIRE(name)' });
+    const row: Row = { name: 'Alice' };
+    proc.process(row);
+    expect(row.result).toBe('Alice');
+  });
+
+  it('bails when value is null', () => {
+    const proc = makeProcessor({ result: 'REQUIRE(name)' });
+    const row: Row = { name: null };
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+
+  it('bails when value is undefined', () => {
+    const proc = makeProcessor({ result: 'REQUIRE(name)' });
+    const row: Row = { name: undefined };
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+
+  it('bails when value is empty string', () => {
+    const proc = makeProcessor({ result: 'REQUIRE(name)' });
+    const row: Row = { name: '' };
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+
+  it('passes through zero and false (not blank)', () => {
+    const proc = makeProcessor({
+      z: 'REQUIRE(num)',
+      f: 'REQUIRE(flag)',
+    });
+    const row: Row = { num: 0, flag: false };
+    proc.process(row);
+    expect(row.z).toBe(0);
+    expect(row.f).toBe(false);
+  });
+
+  it('bails an entire template literal when one ref is blank', () => {
+    const proc = makeProcessor({
+      url: '`https://example.com/users/{REQUIRE(userId)}/posts/{REQUIRE(postId)}`',
+    });
+    const row: Row = { userId: 'u1', postId: '' };
+    proc.process(row);
+    expect(row.url).toBeNull();
+  });
+
+  it('template renders fully when all required refs are present', () => {
+    const proc = makeProcessor({
+      url: '`https://example.com/users/{REQUIRE(userId)}/posts/{REQUIRE(postId)}`',
+    });
+    const row: Row = { userId: 'u1', postId: 'p42' };
+    proc.process(row);
+    expect(row.url).toBe('https://example.com/users/u1/posts/p42');
+  });
+
+  it('IFERROR does not catch a REQUIRE bail', () => {
+    const proc = makeProcessor({ result: 'IFERROR(REQUIRE(name), "fallback")' });
+    const row: Row = { name: '' };
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+});
+
+// ============================================================
 // Math functions
 // ============================================================
 

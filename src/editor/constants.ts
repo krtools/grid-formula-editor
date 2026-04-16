@@ -234,4 +234,8 @@ export const BUILTIN_FUNCTIONS: FunctionDef[] = [
     name: 'BAIL', description: 'Force the whole formula to empty (uncatchable)', signature: 'BAIL()',
     parameters: [],
   },
+  {
+    name: 'REQUIRE', description: 'Return value, or bail the whole formula if blank', signature: 'REQUIRE(value)',
+    parameters: [{ name: 'value', type: 'any', description: 'Value that must be non-blank' }],
+  },
 ];

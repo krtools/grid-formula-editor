@@ -73,6 +73,15 @@ function evaluateFunction(name: string, args: ASTNode[], ctx: EvalContext): unkn
       return undefined;
     }
 
+    case 'REQUIRE': {
+      const v = evaluate(args[0], ctx);
+      if (v === null || v === undefined || v === '') {
+        ctx.bailed = true;
+        return undefined;
+      }
+      return v;
+    }
+
     case 'AND': {
       for (const arg of args) {
         if (!toBoolean(evaluate(arg, ctx))) return false;

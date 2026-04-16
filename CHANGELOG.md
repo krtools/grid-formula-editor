@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `BAIL()` function: forces the entire formula to produce a blank (null) value, uncatchable by `IFERROR`. Useful for terminating evaluation from deep inside nested expressions when a precondition fails. Implemented with a context flag rather than a thrown sentinel so user-visible control flow isn't modeled as an exception.
+- `REQUIRE(value)` function: returns `value` if present, otherwise bails the whole formula. Blankness matches `ISBLANK` semantics (`null`, `undefined`, `""`). Ergonomic for templates where one missing ingredient should make the whole output blank — e.g. `` `https://example.com/users/{REQUIRE(userId)}` ``.
 
 ### Fixed
 
