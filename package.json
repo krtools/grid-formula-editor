@@ -1,6 +1,6 @@
 {
-  "name": "grid-formula-editor",
-  "version": "1.0.0",
+  "name": "@krllc/table-formulas",
+  "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
