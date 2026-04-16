@@ -7,15 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- `BAIL()` function: forces the entire formula to produce a blank (null) value, uncatchable by `IFERROR`. Useful for terminating evaluation from deep inside nested expressions when a precondition fails. Implemented with a context flag rather than a thrown sentinel so user-visible control flow isn't modeled as an exception.
-- `REQUIRE(value)` function: returns `value` if present, otherwise bails the whole formula. Blankness matches `ISBLANK` semantics (`null`, `undefined`, `""`). Ergonomic for templates where one missing ingredient should make the whole output blank — e.g. `` `https://example.com/users/{REQUIRE(userId)}` ``.
-
-### Fixed
-
-- Autocomplete dropdown now correctly scrolls the selected item into view when the signature hint header is showing. Previously the scroll targeted the item one above the selection because `listRef.children` was shifted by the header element — End jumped past the visible area, and arrow-up landed the selection one row below the viewport top.
-
 ## [0.1.0] - 2026-04-16
 
 Initial release.
@@ -28,6 +19,8 @@ Initial release.
 - Template literals: backticks with `{expr}` interpolations, e.g. `` `Hello {firstName}, total: {ROUND(total, 2)}` ``
 - Column dependency extraction via `extractColumnRefs`
 - Built-in functions: `IF`, `ROUND`, `CONCAT`, `AND`, `OR`, `NOT`, `SUM`, `AVG`, `MIN`, `MAX`, and more
+- `BAIL()` — forces the whole formula to render blank (null), uncatchable by `IFERROR`. For terminating evaluation from deep inside nested expressions when a precondition fails. Implemented via an eval-context flag rather than a thrown sentinel.
+- `REQUIRE(value)` — returns `value` if present, otherwise bails the whole formula. Blankness matches `ISBLANK` semantics (`null`, `undefined`, `""`). Ergonomic for templates where one missing ingredient should make the whole output blank — e.g. `` `https://example.com/users/{REQUIRE(userId)}` ``.
 - Fault-tolerant tokenizer (`tokenizeSafe`) that surfaces partial tokens for editor squiggles
 - Typed AST with exported `ASTNode` union
 
