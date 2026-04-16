@@ -97,8 +97,10 @@ function measureSquigglyRects(
   for (const error of errors) {
     if (measured >= MAX_VISIBLE_ERRORS) break;
 
-    // Defer: don't show squiggle while cursor is within the error range
-    if (cursorOffset >= error.start && cursorOffset <= error.end) {
+    // Defer mid-typing errors (unknown column/function) while cursor is
+    // within their range — avoids noise as the user types. Parse errors
+    // always render.
+    if (error.type !== 'parse' && cursorOffset >= error.start && cursorOffset <= error.end) {
       continue;
     }
 

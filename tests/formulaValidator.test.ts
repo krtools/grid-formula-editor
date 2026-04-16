@@ -163,4 +163,39 @@ describe('validateFormula', () => {
     const errors = validateFormula(tokens, null, KNOWN, cols);
     expect(errors).toEqual([]);
   });
+
+  it('flags unclosed parenthesis at the opening paren', () => {
+    const formula = 'SQRT(';
+    const { tokens } = tokenizeSafe(formula);
+    const parseError = getParseError(formula);
+    const errors = validateFormula(tokens, parseError, KNOWN);
+    const unclosed = errors.find(e => e.message === 'Unclosed parenthesis');
+    expect(unclosed).toBeDefined();
+    expect(unclosed!.start).toBe(4);
+    expect(unclosed!.end).toBe(5);
+  });
+
+  it('flags multiple unclosed parens', () => {
+    const formula = 'SQRT((x + 1';
+    const { tokens } = tokenizeSafe(formula);
+    const parseError = getParseError(formula);
+    const errors = validateFormula(tokens, parseError, KNOWN);
+    const unclosed = errors.filter(e => e.message === 'Unclosed parenthesis');
+    expect(unclosed).toHaveLength(2);
+  });
+
+  it('does not flag balanced parens', () => {
+    const formula = 'SQRT((x + 1))';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN);
+    expect(errors.filter(e => e.message.includes('Unclosed'))).toEqual([]);
+  });
+
+  it('flags unclosed template interpolation', () => {
+    const formula = '`hi {name';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN);
+    const unclosed = errors.find(e => e.message === 'Unclosed interpolation');
+    expect(unclosed).toBeDefined();
+  });
 });

@@ -29,6 +29,25 @@ export function validateFormula(
     });
   }
 
+  // Detect unclosed parens and unclosed template interpolations.
+  // The base parse error for these lands at EOF (zero-width, suppressed by the
+  // squiggle renderer and deferred by the cursor-position guard), so emit
+  // targeted errors at the opening token instead.
+  const openStack: Token[] = [];
+  for (const token of tokens) {
+    if (token.type === TokenType.LPAREN || token.type === TokenType.TEMPLATE_INTERP_START) {
+      openStack.push(token);
+    } else if (token.type === TokenType.RPAREN || token.type === TokenType.TEMPLATE_INTERP_END) {
+      // Match against top of stack regardless of type — if mismatched the parser
+      // will surface its own error.
+      if (openStack.length > 0) openStack.pop();
+    }
+  }
+  for (const open of openStack) {
+    const message = open.type === TokenType.LPAREN ? 'Unclosed parenthesis' : 'Unclosed interpolation';
+    errors.push({ message, start: open.start, end: open.end, type: 'parse' });
+  }
+
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     const next = i < tokens.length - 1 ? tokens[i + 1] : null;
