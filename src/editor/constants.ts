@@ -238,4 +238,8 @@ export const BUILTIN_FUNCTIONS: FunctionDef[] = [
     name: 'REQUIRE', description: 'Return value, or bail the whole formula if blank', signature: 'REQUIRE(value)',
     parameters: [{ name: 'value', type: 'any', description: 'Value that must be non-blank' }],
   },
+  {
+    name: 'SELF', description: "This column's pre-formula input value (alias for referencing the column by its own name)", signature: 'SELF()',
+    parameters: [],
+  },
 ];

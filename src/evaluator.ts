@@ -11,6 +11,8 @@ export interface EvalContext {
    * the check sites to two (here: IFERROR's catch, plus the compiler top-level).
    */
   bailed: boolean;
+  /** Name of the formula column currently being evaluated — used by SELF(). */
+  currentColumn: string;
 }
 
 export function evaluate(node: ASTNode, ctx: EvalContext): unknown {
@@ -80,6 +82,10 @@ function evaluateFunction(name: string, args: ASTNode[], ctx: EvalContext): unkn
         return undefined;
       }
       return v;
+    }
+
+    case 'SELF': {
+      return ctx.getColumn(ctx.currentColumn);
     }
 
     case 'AND': {

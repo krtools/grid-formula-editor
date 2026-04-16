@@ -67,7 +67,10 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
   const formulaNames = new Set(compiled.keys());
   const depGraph = new Map<string, string[]>();
   for (const [name, col] of compiled) {
-    depGraph.set(name, col.refs.filter(r => formulaNames.has(r)));
+    // Self-edges are allowed — a formula referencing its own column reads the
+    // pre-formula raw input (see rawValues snapshot below), not the computed
+    // output, so there's no real dependency cycle.
+    depGraph.set(name, col.refs.filter(r => formulaNames.has(r) && r !== name));
   }
 
   const { sorted, cycles } = resolveDependencies(depGraph);
@@ -105,12 +108,31 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
     process(row: T): void {
       const formulaValues = new Map<string, unknown>();
 
+      // Snapshot raw inputs for every formula column so self-references
+      // (`price: 'price + 1'` or `price: 'SELF() + 1'`) resolve to the raw
+      // input, not the formula output. formulaValues won't have the current
+      // column yet during its own evaluation, so getColumn reads from this
+      // snapshot. Note: this doesn't make process() idempotent across calls —
+      // set() mutates the row, so a second process() sees the prior output.
+      const rawValues = new Map<string, unknown>();
+      for (const col of evalOrder) {
+        try {
+          rawValues.set(col.name, get(row, col.name));
+        } catch {
+          rawValues.set(col.name, undefined);
+        }
+      }
+
       for (const col of evalOrder) {
         const ctx: EvalContext = {
           bailed: false,
+          currentColumn: col.name,
 
           getColumn(name: string): unknown {
             if (formulaValues.has(name)) return formulaValues.get(name);
+            // Self-ref during current column's eval: formulaValues is empty,
+            // rawValues has the pre-formula input.
+            if (rawValues.has(name)) return rawValues.get(name);
             try {
               return get(row, name);
             } catch (cause) {

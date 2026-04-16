@@ -78,8 +78,9 @@ export function createBuiltinFunctions(): Map<string, FormulaFunction> {
   fns.set('URLDECODE', (text: unknown) => decodeURIComponent(toString(text)));
 
   // ---- Logical ----
-  // IF, AND, OR, IFERROR, BAIL, REQUIRE are handled as special forms in the
-  // evaluator for short-circuit / lazy evaluation and control-flow semantics.
+  // IF, AND, OR, IFERROR, BAIL, REQUIRE, SELF are handled as special forms in
+  // the evaluator for short-circuit / lazy evaluation and control-flow
+  // semantics.
 
   fns.set('NOT', (val: unknown) => !toBoolean(val));
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Self-column-references: a formula may reference the column it's defining (e.g. `price: 'price * 1.1'`). The reference resolves to the column's pre-formula input value, taken from a per-row snapshot built at the start of `process(row)`. `SELF()` is provided as a rename-safe alias for the same behavior.
+
+### Changed
+
+- Dependency cycle detection now ignores self-edges. A formula like `price: 'price + 1'` no longer triggers `CIRCULAR_REFERENCE` — it's a self-transform, not a cycle. Mutual cycles (A → B → A) are still rejected.
+
 ## [0.1.0] - 2026-04-16
 
 Initial release.

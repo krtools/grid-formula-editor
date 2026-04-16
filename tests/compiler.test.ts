@@ -452,6 +452,89 @@ describe('REQUIRE', () => {
 });
 
 // ============================================================
+// SELF and self-references
+// ============================================================
+
+describe('SELF and self-references', () => {
+  it('bare self-ref transforms the raw input', () => {
+    const proc = makeProcessor({ price: 'price * 1.1' });
+    const row: Row = { price: 10 };
+    proc.process(row);
+    expect(row.price).toBeCloseTo(11);
+  });
+
+  it('SELF() is equivalent to a bare self-ref', () => {
+    const proc = makeProcessor({ price: 'SELF() * 1.1' });
+    const row: Row = { price: 10 };
+    proc.process(row);
+    expect(row.price).toBeCloseTo(11);
+  });
+
+  it('SELF() returns undefined when no raw input exists', () => {
+    const proc = makeProcessor({ derived: 'SELF()' });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.derived).toBeUndefined();
+  });
+
+  it('SELF() composes with REQUIRE', () => {
+    const proc = makeProcessor({ price: 'REQUIRE(SELF()) * 1.1' });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.price).toBeNull();
+  });
+
+  it('mutual cycles are still rejected', () => {
+    const errors: FormulaError[] = [];
+    compile<Row>({
+      columns: [
+        { name: 'a', formula: 'b + 1' },
+        { name: 'b', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, value) => { row[col] = value; },
+      onError: (e) => { errors.push(e); },
+    });
+    expect(errors.some(e => e.code === 'CIRCULAR_REFERENCE')).toBe(true);
+  });
+
+  it('self-ref does NOT trigger cycle detection', () => {
+    const errors: FormulaError[] = [];
+    compile<Row>({
+      columns: [{ name: 'price', formula: 'price + 1' }],
+      get: (row, col) => row[col],
+      set: (row, col, value) => { row[col] = value; },
+      onError: (e) => { errors.push(e); },
+    });
+    expect(errors.some(e => e.code === 'CIRCULAR_REFERENCE')).toBe(false);
+  });
+
+  it('other-column refs still see post-formula computed values', () => {
+    const proc = makeProcessor({
+      price: 'price * 1.1',
+      total: 'price * qty',
+    });
+    const row: Row = { price: 10, qty: 3 };
+    proc.process(row);
+    expect(row.price).toBeCloseTo(11);
+    expect(row.total).toBeCloseTo(33);
+  });
+
+  it('works inside a template interpolation', () => {
+    const proc = makeProcessor({
+      url: '`https://x/{REQUIRE(SELF())}`',
+    });
+    const rowA: Row = { url: 'abc' };
+    proc.process(rowA);
+    expect(rowA.url).toBe('https://x/abc');
+
+    const rowB: Row = { url: '' };
+    proc.process(rowB);
+    expect(rowB.url).toBeNull();
+  });
+});
+
+// ============================================================
 // Math functions
 // ============================================================
 
@@ -612,16 +695,6 @@ describe('circular references', () => {
     proc.process(row);
     expect(row.a).toBeUndefined();
     expect(row.b).toBeUndefined();
-  });
-
-  it('detects self-reference', () => {
-    const errors: FormulaError[] = [];
-    makeProcessor(
-      { a: 'a + 1' },
-      undefined,
-      (err) => { errors.push(err); return undefined; },
-    );
-    expect(errors.some(e => e.code === 'CIRCULAR_REFERENCE')).toBe(true);
   });
 
   it('throws without onError handler', () => {
