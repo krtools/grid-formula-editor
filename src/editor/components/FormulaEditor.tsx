@@ -263,6 +263,24 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
       if (disabled || readOnly) return;
 
+      // Ctrl+Space / Cmd+Space — manually trigger autocomplete
+      if (e.key === ' ' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        const el = editorRef.current;
+        if (!el) return;
+        const cursorPos = getCursorOffset(el);
+        const ctx = getCursorContext(formulaValue, cursorPos);
+        cursorContextRef.current = ctx;
+        const suggs = getSuggestions(ctx, columns, functionDefs);
+        setSuggestions(suggs);
+        setSelectedIndex(suggs.length > 0 ? 0 : -1);
+        const hasSignatureHint = ctx.type === 'function-arg' &&
+          functionDefs.some(f => f.name.toUpperCase() === ctx.functionName.toUpperCase() && f.parameters && f.parameters.length > 0);
+        setShowDropdown(suggs.length > 0 || hasSignatureHint);
+        if (suggs.length > 0 || hasSignatureHint) updateDropdownPosition();
+        return;
+      }
+
       // Undo: Ctrl+Z
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
         e.preventDefault();
@@ -325,6 +343,40 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         if (showDropdown && suggestions.length > 0) {
           e.preventDefault();
           setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+        }
+        return;
+      }
+
+      // Page Up / Down — jump by a page (10 items) inside the dropdown
+      if (e.key === 'PageDown') {
+        if (showDropdown && suggestions.length > 0) {
+          e.preventDefault();
+          setSelectedIndex(prev => Math.min(suggestions.length - 1, prev + 10));
+        }
+        return;
+      }
+
+      if (e.key === 'PageUp') {
+        if (showDropdown && suggestions.length > 0) {
+          e.preventDefault();
+          setSelectedIndex(prev => Math.max(0, prev - 10));
+        }
+        return;
+      }
+
+      // Home / End — jump to first / last item inside the dropdown
+      if (e.key === 'Home') {
+        if (showDropdown && suggestions.length > 0) {
+          e.preventDefault();
+          setSelectedIndex(0);
+        }
+        return;
+      }
+
+      if (e.key === 'End') {
+        if (showDropdown && suggestions.length > 0) {
+          e.preventDefault();
+          setSelectedIndex(suggestions.length - 1);
         }
         return;
       }

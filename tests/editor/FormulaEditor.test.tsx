@@ -195,4 +195,57 @@ describe('FormulaEditor browser tests', () => {
     const el = editorEl();
     expect(el.contentEditable).toBe('false');
   });
+
+  it('Ctrl+Space manually triggers autocomplete', async () => {
+    renderInto(
+      React.createElement(FormulaEditor, {
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+      }),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+
+    await userEvent.keyboard('{Control>} {/Control}');
+
+    const dropdownAppeared = await waitFor(() => {
+      const items = document.querySelectorAll('[style*="z-index"]');
+      for (const item of items) {
+        if (item.textContent?.includes('price')) return true;
+      }
+      return false;
+    });
+    expect(dropdownAppeared).toBe(true);
+  });
+
+  it('End key jumps selection to last dropdown item', async () => {
+    renderInto(
+      React.createElement(FormulaEditor, {
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+      }),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('{Control>} {/Control}');
+
+    await waitFor(() => {
+      const items = document.querySelectorAll('[style*="z-index"]');
+      return items.length > 0 && (items[0].textContent?.includes('price') ?? false);
+    });
+
+    await userEvent.keyboard('{End}');
+
+    // Find the dropdown and verify the last item is highlighted (selected style)
+    // The selected item has dropdownSelected background color
+    const selected = await waitFor(() => {
+      const items = document.querySelectorAll('[style*="z-index"] > div');
+      if (items.length === 0) return false;
+      const last = items[items.length - 1] as HTMLElement;
+      return last.style.backgroundColor !== '' && last.style.backgroundColor !== 'transparent';
+    });
+    expect(selected).toBe(true);
+  });
 });
