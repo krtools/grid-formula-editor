@@ -17,6 +17,7 @@ Thumbs.db
 
 # Coverage / test
 coverage/
+tests/**/__screenshots__/
 
 # npm pack output
 *.tgz

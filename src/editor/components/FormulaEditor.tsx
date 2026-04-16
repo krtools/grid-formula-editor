@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { flushSync } from 'react-dom';
 import { tokenizeSafe } from '../../tokenizer.js';
 import { parse } from '../../parser.js';
 import { Token, ASTNode, FormulaParseError } from '../../types.js';
@@ -108,7 +109,12 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     React.useImperativeHandle(ref, () => ({
       getValue: () => formulaValue,
       setValue: (v: string) => {
-        if (!isControlled) setInternalValue(v);
+        // flushSync so consumers can call getValue() synchronously after
+        // setValue() — otherwise React 18 batches the state update and the
+        // next read returns the stale closure value.
+        if (!isControlled) {
+          flushSync(() => setInternalValue(v));
+        }
         processFormula(v, 0);
       },
       focus: () => editorRef.current?.focus(),
