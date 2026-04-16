@@ -61,7 +61,11 @@ export function getTokenColor(
 export function getContainerStyle(customStyle?: React.CSSProperties): React.CSSProperties {
   return {
     position: 'relative',
-    display: 'inline-block',
+    // display: 'block' (not inline-block) to avoid the CSS 2.1 baseline quirk
+    // where a non-visible `overflow` on the editable div pushes the
+    // inline-block container's baseline to its bottom edge, creating a visible
+    // gap below the input in the surrounding inline layout.
+    display: 'block',
     width: '100%',
     ...customStyle,
   };
