@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-04-16
+
+### Fixed
+
+- Build output no longer imports from `react/jsx-runtime`, which doesn't exist in React 16.x. The library advertises `react >= 16.8` as a peer dep, but 0.2.0 (and 0.1.0) were built with the automatic JSX runtime and failed to load under React 16. Switched to the classic transform (`React.createElement`) so the advertised peer range actually works.
+
 ## [0.2.0] - 2026-04-16
 
 ### Added
@@ -63,6 +69,7 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/krtools/grid-formula-editor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/krtools/grid-formula-editor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/krtools/grid-formula-editor/releases/tag/v0.1.0
