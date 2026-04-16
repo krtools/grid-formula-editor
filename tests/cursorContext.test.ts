@@ -96,4 +96,34 @@ describe('getCursorContext', () => {
     const ctx = getCursorContext('a >= ', 5);
     expect(ctx.type).toBe('expression-start');
   });
+
+  it('returns expression-start immediately after template interpolation {', () => {
+    const ctx = getCursorContext('`Hello {', 8);
+    expect(ctx.type).toBe('expression-start');
+  });
+
+  it('returns column context for partial identifier inside interpolation', () => {
+    const ctx = getCursorContext('`Hello {nam', 11);
+    expect(ctx.type).toBe('column');
+    if (ctx.type === 'column') {
+      expect(ctx.partial).toBe('nam');
+    }
+  });
+
+  it('returns function context inside interpolation', () => {
+    const ctx = getCursorContext('`result: {ROUND(', 15);
+    expect(ctx.type).toBe('function');
+    if (ctx.type === 'function') {
+      expect(ctx.partial).toBe('ROUND');
+    }
+  });
+
+  it('returns function-arg inside function call within interpolation', () => {
+    const ctx = getCursorContext('`result: {ROUND(x, ', 19);
+    expect(ctx.type).toBe('function-arg');
+    if (ctx.type === 'function-arg') {
+      expect(ctx.functionName).toBe('ROUND');
+      expect(ctx.argIndex).toBe(1);
+    }
+  });
 });

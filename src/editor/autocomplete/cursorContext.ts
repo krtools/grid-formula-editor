@@ -42,6 +42,10 @@ export function getCursorContext(formula: string, cursorOffset: number): CursorC
       }
       return { type: 'expression-start' };
     }
+    // After `{` opening a template interpolation — expression start
+    if (last.type === TokenType.TEMPLATE_INTERP_START) {
+      return { type: 'expression-start' };
+    }
     // After any other operator/separator — expression start
     if (isOperatorOrSeparator(last.type)) {
       return { type: 'expression-start' };
@@ -84,6 +88,11 @@ export function getCursorContext(formula: string, cursorOffset: number): CursorC
     if (fnInfo) {
       return { type: 'function-arg', functionName: fnInfo.name, argIndex: fnInfo.argIndex };
     }
+    return { type: 'expression-start' };
+  }
+
+  // Cursor right after an opening `{` of a template interpolation — expression start
+  if (currentToken.type === TokenType.TEMPLATE_INTERP_START) {
     return { type: 'expression-start' };
   }
 

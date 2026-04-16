@@ -171,3 +171,165 @@ describe('tokenizeSafe', () => {
     expect(tokens[0].type).toBe(TokenType.EOF);
   });
 });
+
+describe('tokenize — template literals', () => {
+  it('empty template', () => {
+    const tokens = tokenize('``');
+    expect(tokens.map(t => t.type)).toEqual([
+      TokenType.TEMPLATE_START,
+      TokenType.TEMPLATE_END,
+      TokenType.EOF,
+    ]);
+    expect(tokens[0]).toMatchObject({ start: 0, end: 1 });
+    expect(tokens[1]).toMatchObject({ start: 1, end: 2 });
+  });
+
+  it('static text only', () => {
+    const tokens = tokenize('`hello`');
+    expect(tokens.map(t => t.type)).toEqual([
+      TokenType.TEMPLATE_START,
+      TokenType.TEMPLATE_TEXT,
+      TokenType.TEMPLATE_END,
+      TokenType.EOF,
+    ]);
+    expect(tokens[1]).toMatchObject({ value: 'hello', start: 1, end: 6 });
+    expect(tokens[2]).toMatchObject({ start: 6, end: 7 });
+  });
+
+  it('single interpolation', () => {
+    const tokens = tokenize('`{name}`');
+    expect(tokens.map(t => t.type)).toEqual([
+      TokenType.TEMPLATE_START,
+      TokenType.TEMPLATE_INTERP_START,
+      TokenType.IDENTIFIER,
+      TokenType.TEMPLATE_INTERP_END,
+      TokenType.TEMPLATE_END,
+      TokenType.EOF,
+    ]);
+    expect(tokens[2]).toMatchObject({ value: 'name', start: 2, end: 6 });
+  });
+
+  it('mixed text and interpolation', () => {
+    const tokens = tokenize('`hi {name}!`');
+    expect(tokens.map(t => t.type)).toEqual([
+      TokenType.TEMPLATE_START,
+      TokenType.TEMPLATE_TEXT,
+      TokenType.TEMPLATE_INTERP_START,
+      TokenType.IDENTIFIER,
+      TokenType.TEMPLATE_INTERP_END,
+      TokenType.TEMPLATE_TEXT,
+      TokenType.TEMPLATE_END,
+      TokenType.EOF,
+    ]);
+    expect(tokens[1]).toMatchObject({ value: 'hi ', start: 1, end: 4 });
+    expect(tokens[5]).toMatchObject({ value: '!', start: 10, end: 11 });
+  });
+
+  it('multiple interpolations with no text between', () => {
+    const tokens = tokenize('`{a}{b}`');
+    const types = tokens.map(t => t.type);
+    expect(types).toEqual([
+      TokenType.TEMPLATE_START,
+      TokenType.TEMPLATE_INTERP_START,
+      TokenType.IDENTIFIER,
+      TokenType.TEMPLATE_INTERP_END,
+      TokenType.TEMPLATE_INTERP_START,
+      TokenType.IDENTIFIER,
+      TokenType.TEMPLATE_INTERP_END,
+      TokenType.TEMPLATE_END,
+      TokenType.EOF,
+    ]);
+  });
+
+  it('expression inside interpolation', () => {
+    const tokens = tokenize('`result: {ROUND(x, 2)}`');
+    const nonEOF = tokens.filter(t => t.type !== TokenType.EOF);
+    expect(nonEOF.map(t => t.type)).toEqual([
+      TokenType.TEMPLATE_START,
+      TokenType.TEMPLATE_TEXT,
+      TokenType.TEMPLATE_INTERP_START,
+      TokenType.IDENTIFIER, // ROUND
+      TokenType.LPAREN,
+      TokenType.IDENTIFIER, // x
+      TokenType.COMMA,
+      TokenType.NUMBER,
+      TokenType.RPAREN,
+      TokenType.TEMPLATE_INTERP_END,
+      TokenType.TEMPLATE_END,
+    ]);
+  });
+
+  it('escape sequences in template text', () => {
+    const tokens = tokenize('`a\\`b\\{c\\\\d`');
+    const text = tokens.find(t => t.type === TokenType.TEMPLATE_TEXT);
+    expect(text).toBeDefined();
+    expect(text!.value).toBe('a`b{c\\d');
+  });
+
+  it('newline and tab escapes in template text', () => {
+    const tokens = tokenize('`a\\nb\\tc`');
+    const text = tokens.find(t => t.type === TokenType.TEMPLATE_TEXT);
+    expect(text!.value).toBe('a\nb\tc');
+  });
+
+  it('literal `}` in template text needs no escape', () => {
+    const tokens = tokenize('`a}b`');
+    const text = tokens.find(t => t.type === TokenType.TEMPLATE_TEXT);
+    expect(text!.value).toBe('a}b');
+  });
+
+  it('bracket column inside interpolation', () => {
+    const tokens = tokenize('`{[First Name]}`');
+    const bracket = tokens.find(t => t.type === TokenType.BRACKET_IDENTIFIER);
+    expect(bracket).toMatchObject({ value: 'First Name' });
+  });
+
+  it('nested template', () => {
+    const tokens = tokenize('`{ `{x}` }`');
+    const types = tokens.map(t => t.type).filter(t => t !== TokenType.EOF);
+    // outer start, {, inner start, inner {, x, inner }, inner end, inner }, outer end
+    expect(types).toEqual([
+      TokenType.TEMPLATE_START,
+      TokenType.TEMPLATE_INTERP_START,
+      TokenType.TEMPLATE_START,
+      TokenType.TEMPLATE_INTERP_START,
+      TokenType.IDENTIFIER,
+      TokenType.TEMPLATE_INTERP_END,
+      TokenType.TEMPLATE_END,
+      TokenType.TEMPLATE_INTERP_END,
+      TokenType.TEMPLATE_END,
+    ]);
+  });
+
+  it('throws on unterminated template', () => {
+    expect(() => tokenize('`hello')).toThrow(FormulaParseError);
+  });
+
+  it('throws on unterminated interpolation', () => {
+    expect(() => tokenize('`hi {name')).toThrow(FormulaParseError);
+  });
+});
+
+describe('tokenizeSafe — template literals', () => {
+  it('valid template matches strict output', () => {
+    const strict = tokenize('`hi {name}!`');
+    const { tokens, error } = tokenizeSafe('`hi {name}!`');
+    expect(error).toBeNull();
+    expect(tokens).toEqual(strict);
+  });
+
+  it('unterminated template records error at opening backtick', () => {
+    const { tokens, error } = tokenizeSafe('`hello');
+    expect(error).toBeInstanceOf(FormulaParseError);
+    expect(error!.start).toBe(0);
+    expect(tokens[0]).toMatchObject({ type: TokenType.TEMPLATE_START });
+    expect(tokens.some(t => t.type === TokenType.TEMPLATE_TEXT && t.value === 'hello')).toBe(true);
+  });
+
+  it('unterminated interpolation records error', () => {
+    const { tokens, error } = tokenizeSafe('`hi {name');
+    expect(error).toBeInstanceOf(FormulaParseError);
+    expect(tokens.some(t => t.type === TokenType.TEMPLATE_INTERP_START)).toBe(true);
+    expect(tokens.some(t => t.type === TokenType.IDENTIFIER && t.value === 'name')).toBe(true);
+  });
+});

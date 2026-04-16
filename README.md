@@ -124,6 +124,41 @@ CONCAT(first, " ", last)
 
 Both produce `"John Doe"` when `first` is `"John"` and `last` is `"Doe"`.
 
+### Template literals
+
+For string-heavy formulas, backtick template literals are often cleaner than
+`&` or `CONCAT(...)`. Interpolations use plain `{expr}` — there is no `$`
+prefix.
+
+```
+`Hello {firstName}, you have {count} items`
+```
+
+Interpolated expressions can be any formula expression: columns, function
+calls, arithmetic, nested templates.
+
+| Instead of                                      | Write                                   |
+|-------------------------------------------------|-----------------------------------------|
+| `CONCAT("Hi, ", name, "!")`                     | `` `Hi, {name}!` ``                     |
+| `[First Name] & " " & [Last Name]`              | `` `{[First Name]} {[Last Name]}` ``    |
+| `"Margin: " & ROUND(margin * 100, 1) & "%"`     | `` `Margin: {ROUND(margin * 100, 1)}%` `` |
+
+Values inside interpolations are coerced the same way as the `&` operator:
+numbers to their string form, booleans to `"TRUE"`/`"FALSE"`, `null` /
+`undefined` to the empty string.
+
+#### Escape sequences
+
+| Sequence | Meaning          |
+|----------|------------------|
+| `` \` `` | literal backtick |
+| `\{`     | literal `{`      |
+| `\\`     | literal `\`      |
+| `\n`     | newline          |
+| `\t`     | tab              |
+
+`}` in template text is a literal `}` — no escape needed.
+
 ### Comparisons
 
 ```

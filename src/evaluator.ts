@@ -27,6 +27,14 @@ export function evaluate(node: ASTNode, ctx: EvalContext): unknown {
 
     case 'function':
       return evaluateFunction(node.name, node.args, ctx);
+
+    case 'template': {
+      let result = node.parts[0];
+      for (let i = 0; i < node.expressions.length; i++) {
+        result += toString(evaluate(node.expressions[i], ctx)) + node.parts[i + 1];
+      }
+      return result;
+    }
   }
 }
 

@@ -18,6 +18,9 @@ export function extractColumnRefs(ast: ASTNode): string[] {
       case 'function':
         for (const arg of node.args) walk(arg);
         break;
+      case 'template':
+        for (const expr of node.expressions) walk(expr);
+        break;
       // number, string, boolean — no refs
     }
   }

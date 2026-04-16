@@ -143,6 +143,40 @@ export function parse(formula: string): ASTNode {
         return expr;
       }
 
+      case TokenType.TEMPLATE_START: {
+        pos++;
+        const parts: string[] = [];
+        const expressions: ASTNode[] = [];
+        let textBuffer = '';
+
+        while (current().type !== TokenType.TEMPLATE_END) {
+          if (current().type === TokenType.TEMPLATE_TEXT) {
+            textBuffer += current().value;
+            pos++;
+          } else if (current().type === TokenType.TEMPLATE_INTERP_START) {
+            parts.push(textBuffer);
+            textBuffer = '';
+            pos++;
+            expressions.push(parseExpression());
+            eat(TokenType.TEMPLATE_INTERP_END);
+          } else {
+            const t = current();
+            throw new FormulaParseError(
+              `Unexpected token "${t.value}" (${t.type}) in template at position ${t.start}`,
+              t.start,
+              t.end,
+            );
+          }
+        }
+        parts.push(textBuffer);
+        pos++; // consume TEMPLATE_END
+
+        if (expressions.length === 0) {
+          return { type: 'string', value: parts[0] };
+        }
+        return { type: 'template', parts, expressions };
+      }
+
       default:
         throw new FormulaParseError(
           `Unexpected token "${token.value}" (${token.type}) at position ${token.start}`,

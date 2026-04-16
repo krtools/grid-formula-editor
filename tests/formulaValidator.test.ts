@@ -132,4 +132,35 @@ describe('validateFormula', () => {
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toBe('Unknown column: price');
   });
+
+  it('does not flag template static text', () => {
+    const cols = new Set(['name']);
+    const formula = '`Hello world`';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN, cols);
+    expect(errors).toEqual([]);
+  });
+
+  it('detects unknown column inside template interpolation', () => {
+    const cols = new Set(['price']);
+    const formula = '`value: {pricez}`';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN, cols);
+    expect(errors.some(e => e.type === 'unknown-column' && e.message === 'Unknown column: pricez')).toBe(true);
+  });
+
+  it('detects unknown function inside template interpolation', () => {
+    const formula = '`{FOO(x)}`';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN);
+    expect(errors.some(e => e.type === 'unknown-function' && e.message === 'Unknown function: FOO')).toBe(true);
+  });
+
+  it('accepts valid template with known refs', () => {
+    const cols = new Set(['firstName', 'lastName']);
+    const formula = '`{firstName} {lastName}`';
+    const { tokens } = tokenizeSafe(formula);
+    const errors = validateFormula(tokens, null, KNOWN, cols);
+    expect(errors).toEqual([]);
+  });
 });

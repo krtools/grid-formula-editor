@@ -22,6 +22,11 @@ export enum TokenType {
   GT = 'GT',
   LTE = 'LTE',
   GTE = 'GTE',
+  TEMPLATE_START = 'TEMPLATE_START',
+  TEMPLATE_TEXT = 'TEMPLATE_TEXT',
+  TEMPLATE_INTERP_START = 'TEMPLATE_INTERP_START',
+  TEMPLATE_INTERP_END = 'TEMPLATE_INTERP_END',
+  TEMPLATE_END = 'TEMPLATE_END',
   EOF = 'EOF',
   ERROR = 'ERROR',
 }
@@ -42,7 +47,8 @@ export type ASTNode =
   | ColumnRef
   | UnaryExpr
   | BinaryExpr
-  | FunctionCall;
+  | FunctionCall
+  | TemplateLiteral;
 
 export interface NumberLiteral {
   type: 'number';
@@ -81,6 +87,12 @@ export interface FunctionCall {
   type: 'function';
   name: string;
   args: ASTNode[];
+}
+
+export interface TemplateLiteral {
+  type: 'template';
+  parts: string[];
+  expressions: ASTNode[];
 }
 
 // ============ Errors ============

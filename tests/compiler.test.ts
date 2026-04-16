@@ -806,3 +806,104 @@ describe('edge cases', () => {
     expect(row.result).toBe('hello');
   });
 });
+
+// ============================================================
+// Template literals
+// ============================================================
+
+describe('template literals', () => {
+  it('simple interpolation', () => {
+    const proc = makeProcessor({ greeting: '`Hello {name}`' });
+    const row: Row = { name: 'Alice' };
+    proc.process(row);
+    expect(row.greeting).toBe('Hello Alice');
+  });
+
+  it('multiple interpolations', () => {
+    const proc = makeProcessor({ label: '`{first} {last}`' });
+    const row: Row = { first: 'Jane', last: 'Doe' };
+    proc.process(row);
+    expect(row.label).toBe('Jane Doe');
+  });
+
+  it('empty template evaluates to empty string', () => {
+    const proc = makeProcessor({ empty: '``' });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.empty).toBe('');
+  });
+
+  it('coerces number to string', () => {
+    const proc = makeProcessor({ label: '`value: {n}`' });
+    const row: Row = { n: 42 };
+    proc.process(row);
+    expect(row.label).toBe('value: 42');
+  });
+
+  it('coerces boolean to TRUE/FALSE', () => {
+    const proc = makeProcessor({ label: '`active: {flag}`' });
+    const row: Row = { flag: true };
+    proc.process(row);
+    expect(row.label).toBe('active: TRUE');
+  });
+
+  it('coerces null/undefined to empty string', () => {
+    const proc = makeProcessor({ label: '`name: {x}`' });
+    const row: Row = { x: null };
+    proc.process(row);
+    expect(row.label).toBe('name: ');
+  });
+
+  it('function call inside interpolation', () => {
+    const proc = makeProcessor({ result: '`pct: {ROUND(margin * 100, 1)}%`' });
+    const row: Row = { margin: 0.1234 };
+    proc.process(row);
+    expect(row.result).toBe('pct: 12.3%');
+  });
+
+  it('IF inside interpolation', () => {
+    const proc = makeProcessor({ label: '`status: {IF(x > 0, "pos", "neg")}`' });
+    const row: Row = { x: 5 };
+    proc.process(row);
+    expect(row.label).toBe('status: pos');
+  });
+
+  it('bracket column inside interpolation', () => {
+    const proc = makeProcessor({ label: '`{[First Name]} {[Last Name]}`' });
+    const row: Row = { 'First Name': 'Jane', 'Last Name': 'Doe' };
+    proc.process(row);
+    expect(row.label).toBe('Jane Doe');
+  });
+
+  it('escapes in template text', () => {
+    const proc = makeProcessor({ label: '`a\\`b\\{c`' });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.label).toBe('a`b{c');
+  });
+
+  it('equivalent to & concatenation', () => {
+    const procT = makeProcessor({ r: '`a{x}b`' });
+    const procC = makeProcessor({ r: '"a" & x & "b"' });
+
+    for (const x of [42, 'hello', true, 0]) {
+      const rowT: Row = { x };
+      const rowC: Row = { x };
+      procT.process(rowT);
+      procC.process(rowC);
+      expect(rowT.r).toBe(rowC.r);
+    }
+  });
+
+  it('tracks referenced columns through templates', () => {
+    const refs: string[][] = [];
+    const columns = [{ name: 'label', formula: '`Hello {firstName} {lastName}`' }];
+    const proc = compile<Row>({
+      columns,
+      get: (row, col) => row[col],
+      set: (_row, _col, _value, referencedColumns) => { refs.push(referencedColumns); },
+    });
+    proc.process({ firstName: 'A', lastName: 'B' });
+    expect(refs[0].sort()).toEqual(['firstName', 'lastName']);
+  });
+});

@@ -33,6 +33,11 @@ const TOKEN_COLOR_MAP: Record<TokenType, keyof FormulaColorConfig> = {
   [TokenType.GT]: 'operator',
   [TokenType.LTE]: 'operator',
   [TokenType.GTE]: 'operator',
+  [TokenType.TEMPLATE_START]: 'paren',
+  [TokenType.TEMPLATE_END]: 'paren',
+  [TokenType.TEMPLATE_TEXT]: 'string',
+  [TokenType.TEMPLATE_INTERP_START]: 'paren',
+  [TokenType.TEMPLATE_INTERP_END]: 'paren',
   [TokenType.EOF]: 'text',
   [TokenType.ERROR]: 'error',
 };
