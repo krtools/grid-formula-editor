@@ -26,6 +26,7 @@ import { validateFormula, FormulaValidationError } from '../validation/formulaVa
 import { buildHighlightedHTML } from './HighlightedContent.js';
 import { AutocompleteDropdown } from './AutocompleteDropdown.js';
 import { ValidationSquiggles } from './ValidationSquiggles.js';
+import { MatchingParens } from './MatchingParens.js';
 
 const WRAP_PAIRS: Record<string, string> = {
   '(': ')',
@@ -162,6 +163,21 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       processFormula(formulaValue, 0);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Track caret moves (clicks, arrow keys) so matching-paren highlight follows.
+    React.useEffect(() => {
+      if (!isFocused) return;
+      const handler = () => {
+        const el = editorRef.current;
+        if (!el) return;
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        if (!el.contains(sel.anchorNode)) return;
+        setCursorOffsetState(getCursorOffset(el));
+      };
+      document.addEventListener('selectionchange', handler);
+      return () => document.removeEventListener('selectionchange', handler);
+    }, [isFocused]);
 
     // Re-process when controlled value changes
     React.useEffect(() => {
@@ -541,6 +557,12 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
             {placeholder}
           </div>
         )}
+        <MatchingParens
+          tokens={tokens}
+          cursorOffset={cursorOffset}
+          editorElement={editorRef.current}
+          hasFocus={isFocused}
+        />
         <ValidationSquiggles
           errors={validationErrors}
           editorElement={editorRef.current}
