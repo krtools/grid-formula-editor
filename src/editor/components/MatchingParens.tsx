@@ -90,10 +90,13 @@ function measureRect(editor: HTMLElement, start: number, end: number): { left: n
   range.setStart(a.node, a.offset);
   range.setEnd(b.node, b.offset);
 
-  const rects = range.getClientRects();
-  if (rects.length === 0) return null;
+  // Use getBoundingClientRect, not getClientRects()[0]: when the range start
+  // lands at a span boundary (e.g. end-of-prev-node == start-of-this-node),
+  // getClientRects() returns a leading zero-width rect at that boundary. Taking
+  // [0] would render a 2px-wide stripe on the left edge of the character.
+  const r = range.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return null;
 
-  const r = rects[0];
   const editorRect = editor.getBoundingClientRect();
   return {
     left: r.left - editorRect.left,

@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Autocomplete caret placement: for zero-arg functions (`BAIL()`, `SELF()`), the caret is placed after the closing paren on insert. Functions with parameters still get the caret placed between the parens so the user can start typing the first argument.
 - Matching-paren highlighting is suppressed when the open/close parens are adjacent (empty body, e.g. `BAIL()`). Highlighting a pair with nothing between them added no information and produced a visual artifact at the span boundary.
+
+### Fixed
+
+- Matching-paren highlight occasionally rendered as a 2px stripe on the left edge of a paren (e.g. the outer `)` in `(SELF())`). The rect measurement used `getClientRects()[0]`, which returned a leading zero-width rect at the span boundary when the range started at the end of the prior token's text node. Switched to `getBoundingClientRect()`, which unions the fragments and returns the correct glyph bounds.
 - Dependency cycle detection now ignores self-edges. A formula like `price: 'price + 1'` no longer triggers `CIRCULAR_REFERENCE` — it's a self-transform, not a cycle. Mutual cycles (A → B → A) are still rejected.
 
 ## [0.1.0] - 2026-04-16
