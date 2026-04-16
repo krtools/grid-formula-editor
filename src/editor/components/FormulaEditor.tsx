@@ -76,6 +76,12 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     const undoStackRef = React.useRef(new UndoStack());
     const typingGroupTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
+    // True when the most recent input was a structural char (operator, paren,
+    // quote, auto-wrap, etc.) rather than a filter-extending char. Used to
+    // suppress dropdown auto-select — a fresh `(` or `+` shouldn't highlight
+    // a random suggestion just because the token under the caret happens to
+    // match one.
+    const suppressAutoSelectRef = React.useRef(false);
     const [validationErrors, setValidationErrors] = React.useState<FormulaValidationError[]>([]);
     const [cursorOffset, setCursorOffsetState] = React.useState(0);
 
@@ -140,10 +146,14 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         const suggs = getSuggestions(ctx, columns, functionDefs);
         setSuggestions(suggs);
         // Auto-select the first item only when the user has typed a filter
-        // (column/function/bracket-column partial). Fresh dropdowns without
-        // a partial (expression-start, function-arg) require ArrowDown first.
+        // (column/function/bracket-column partial) AND the most recent input
+        // was a filter-extending char. Fresh dropdowns or ones triggered by
+        // structural chars (operators, parens, quotes, auto-wrap) require
+        // ArrowDown first so Enter/Tab can't insert a random match.
         const hasPartial = ctx.type === 'column' || ctx.type === 'function' || ctx.type === 'bracket-column';
-        setSelectedIndex(suggs.length > 0 && hasPartial ? 0 : -1);
+        const shouldAutoSelect = suggs.length > 0 && hasPartial && !suppressAutoSelectRef.current;
+        setSelectedIndex(shouldAutoSelect ? 0 : -1);
+        suppressAutoSelectRef.current = false;
 
         // Show dropdown for suggestions or function-arg signature hints
         const hasSignatureHint = ctx.type === 'function-arg' &&
@@ -296,6 +306,14 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
       if (disabled || readOnly) return;
+
+      // Classify the keystroke: filter-extending chars (letters, digits, `_`)
+      // leave auto-select enabled; anything else (operators, punctuation,
+      // quotes, parens) suppresses it. Modifier combos and navigation keys
+      // (key.length > 1) don't touch the flag — they leave prior state intact.
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+        suppressAutoSelectRef.current = !/[a-zA-Z0-9_]/.test(e.key);
+      }
 
       // Auto-wrap selection with brackets or quotes when the user types
       // the opening character while something is selected.

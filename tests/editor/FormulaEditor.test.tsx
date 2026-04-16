@@ -296,6 +296,33 @@ describe('FormulaEditor browser tests', () => {
     expect(selected).toBe(true);
   });
 
+  it('auto-wrapping with ( does not auto-select dropdown item', async () => {
+    renderInto(
+      React.createElement(FormulaEditor, {
+        defaultValue: 'price * quantity',
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+      }),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Select the whole formula, then wrap with (
+    await userEvent.keyboard('{Control>}a{/Control}');
+    await userEvent.keyboard('(');
+
+    // Dropdown may open because cursor is after `quantity`, but nothing
+    // should be auto-highlighted — no item should have a non-transparent bg.
+    // Give the dropdown a moment to render if it's going to.
+    await new Promise(r => setTimeout(r, 100));
+    const items = document.querySelectorAll('[style*="z-index"] > div');
+    const hasHighlighted = Array.from(items).some(item => {
+      const bg = (item as HTMLElement).style.backgroundColor;
+      return bg && bg !== 'transparent';
+    });
+    expect(hasHighlighted).toBe(false);
+  });
+
   it('selecting a function suggestion inserts () and places caret between', async () => {
     let handleRef: FormulaEditorHandle | null = null;
     let lastFormula = '';
