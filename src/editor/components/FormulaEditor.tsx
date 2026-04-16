@@ -139,7 +139,11 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         cursorContextRef.current = ctx;
         const suggs = getSuggestions(ctx, columns, functionDefs);
         setSuggestions(suggs);
-        setSelectedIndex(suggs.length > 0 ? 0 : -1);
+        // Auto-select the first item only when the user has typed a filter
+        // (column/function/bracket-column partial). Fresh dropdowns without
+        // a partial (expression-start, function-arg) require ArrowDown first.
+        const hasPartial = ctx.type === 'column' || ctx.type === 'function' || ctx.type === 'bracket-column';
+        setSelectedIndex(suggs.length > 0 && hasPartial ? 0 : -1);
 
         // Show dropdown for suggestions or function-arg signature hints
         const hasSignatureHint = ctx.type === 'function-arg' &&
@@ -333,7 +337,8 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         cursorContextRef.current = ctx;
         const suggs = getSuggestions(ctx, columns, functionDefs);
         setSuggestions(suggs);
-        setSelectedIndex(suggs.length > 0 ? 0 : -1);
+        const hasPartial = ctx.type === 'column' || ctx.type === 'function' || ctx.type === 'bracket-column';
+        setSelectedIndex(suggs.length > 0 && hasPartial ? 0 : -1);
         const hasSignatureHint = ctx.type === 'function-arg' &&
           functionDefs.some(f => f.name.toUpperCase() === ctx.functionName.toUpperCase() && f.parameters && f.parameters.length > 0);
         setShowDropdown(suggs.length > 0 || hasSignatureHint);
