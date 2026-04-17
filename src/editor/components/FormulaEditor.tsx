@@ -36,6 +36,7 @@ const HOVER_TOOLTIP_DELAY_MS = 400;
 const WRAP_PAIRS: Record<string, string> = {
   '(': ')',
   '[': ']',
+  '{': '}',
   '"': '"',
   "'": "'",
   '`': '`',

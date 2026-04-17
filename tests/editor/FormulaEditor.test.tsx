@@ -347,6 +347,57 @@ describe('FormulaEditor browser tests', () => {
     expect(selected).toBe(true);
   });
 
+  it('auto-wraps selection with { }', async () => {
+    let lastFormula = '';
+    renderInto(
+      React.createElement(FormulaEditor, {
+        defaultValue: '`Hello world`',
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+        onChange: (formula: string) => { lastFormula = formula; },
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Select the "world" substring by walking to it from the start.
+    // `Hello world` occupies positions 0..12; "world" is at 7..12.
+    const range = document.createRange();
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let remaining = 7;
+    let startNode: Node | null = null;
+    let startOffset = 0;
+    let node = walker.nextNode();
+    while (node) {
+      const len = (node.textContent || '').length;
+      if (remaining <= len) { startNode = node; startOffset = remaining; break; }
+      remaining -= len;
+      node = walker.nextNode();
+    }
+    let endRemaining = 12;
+    let endNode: Node | null = null;
+    let endOffset = 0;
+    const walker2 = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let n2 = walker2.nextNode();
+    while (n2) {
+      const len = (n2.textContent || '').length;
+      if (endRemaining <= len) { endNode = n2; endOffset = endRemaining; break; }
+      endRemaining -= len;
+      n2 = walker2.nextNode();
+    }
+    expect(startNode).not.toBeNull();
+    expect(endNode).not.toBeNull();
+    range.setStart(startNode!, startOffset);
+    range.setEnd(endNode!, endOffset);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    // In userEvent.keyboard, `{` is the key-descriptor delimiter; use `{{` for a literal.
+    await userEvent.keyboard('{{');
+    await waitFor(() => lastFormula === '`Hello {world}`');
+    expect(lastFormula).toBe('`Hello {world}`');
+  });
+
   it('auto-wrapping with ( does not auto-select dropdown item', async () => {
     renderInto(
       React.createElement(FormulaEditor, {
