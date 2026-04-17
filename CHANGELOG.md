@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-04-17
+
 ### Fixed
 
 - Invisible gap below the editor in inline layouts. The container was `display: inline-block`, which participates in baseline alignment; combined with `overflow-x: auto` on the editable div (whose baseline then becomes its bottom margin edge per CSS 2.1), the inline-block's baseline was pushed down, leaving a gap below the input. Switched the container to `display: block` — it had `width: 100%` anyway, so no layout change for normal usage.
@@ -74,7 +76,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/krtools/grid-formula-editor/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/krtools/grid-formula-editor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/krtools/grid-formula-editor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/krtools/grid-formula-editor/releases/tag/v0.1.0
