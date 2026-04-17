@@ -1,6 +1,6 @@
 {
   "name": "@krllc/table-formulas",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,6 +25,7 @@
   "files": [
     "dist",
     "README.md",
+    "USERGUIDE.md",
     "LICENSE",
     "CHANGELOG.md"
   ],

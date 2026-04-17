@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-17
+
 ### Added
 
 - Hover tooltip on function-name tokens in the editor. After a short delay, hovering a function name (`ROUND`, `IF`, etc.) shows a floating box with the signature and description, reusing the same `SignatureHint` component (and styling) as the autocomplete dropdown's parameter header — so the visual language stays consistent between hover and in-call hints. Positioned above the hovered token via a portal.
@@ -91,7 +93,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/krtools/grid-formula-editor/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/krtools/grid-formula-editor/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/krtools/grid-formula-editor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/krtools/grid-formula-editor/compare/v0.1.0...v0.2.0
