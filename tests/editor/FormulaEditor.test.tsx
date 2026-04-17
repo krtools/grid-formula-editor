@@ -198,7 +198,7 @@ describe('FormulaEditor browser tests', () => {
     expect(sel!.name).toBe('ROUND');
   });
 
-  it('clicking while already focused reopens the dropdown', async () => {
+  it('clicking while already focused reopens the dropdown when reopenDropdownOnClick is enabled', async () => {
     let handleRef: FormulaEditorHandle | null = null;
     renderInto(
       React.createElement(FormulaEditor, {
@@ -206,6 +206,7 @@ describe('FormulaEditor browser tests', () => {
         defaultValue: 'price + quantity',
         columns: COLUMNS,
         functions: FUNCTIONS,
+        reopenDropdownOnClick: true,
       } as any),
     );
     const el = editorEl();
@@ -221,6 +222,151 @@ describe('FormulaEditor browser tests', () => {
     await locator.click();
     await waitFor(() => handleRef!.isDropdownOpen());
     expect(handleRef!.isDropdownOpen()).toBe(true);
+  });
+
+  it('clicking while focused does NOT reopen the dropdown by default (flag off)', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        defaultValue: 'price + quantity',
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+
+    await locator.click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(handleRef!.isDropdownOpen()).toBe(false);
+
+    // Second click — with the flag off, the dropdown must stay closed.
+    await locator.click();
+    await new Promise(r => setTimeout(r, 150));
+    expect(handleRef!.isDropdownOpen()).toBe(false);
+  });
+
+  it('arrow navigation to a no-context caret position dismisses the dropdown', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        defaultValue: '42',
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('{End}');
+    await userEvent.type(locator, ' + pri');
+    await waitFor(() => handleRef!.isDropdownOpen());
+    expect(handleRef!.isDropdownOpen()).toBe(true);
+
+    // Walk the caret back into the number literal (position 2, end of "42") —
+    // that's a 'none' context, so the dropdown should dismiss.
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}');
+    await waitFor(() => !handleRef!.isDropdownOpen());
+    expect(handleRef!.isDropdownOpen()).toBe(false);
+  });
+
+  it('clicking into template text dismisses an open dropdown', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        defaultValue: '`hello world`',
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+
+    // Programmatically place the caret inside the template text, then
+    // trigger the dropdown manually via Ctrl+Space — template text has no
+    // context, so suggestions are empty and the dropdown shouldn't even open.
+    // Instead, simulate: open it by typing something that produces suggestions,
+    // then move caret into the template text to test dismissal.
+    // Easiest path: append a column reference, open dropdown, then click back.
+    await userEvent.keyboard('{End}');
+    await userEvent.type(locator, ' + pri');
+    await waitFor(() => handleRef!.isDropdownOpen());
+    expect(handleRef!.isDropdownOpen()).toBe(true);
+
+    // Move caret into the template body (position 3, inside "hello").
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let remaining = 3;
+    let node = walker.nextNode();
+    let targetNode: Node | null = null;
+    let targetOffset = 0;
+    while (node) {
+      const len = (node.textContent || '').length;
+      if (remaining <= len) { targetNode = node; targetOffset = remaining; break; }
+      remaining -= len;
+      node = walker.nextNode();
+    }
+    expect(targetNode).not.toBeNull();
+    const range = document.createRange();
+    range.setStart(targetNode!, targetOffset);
+    range.collapse(true);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    // selectionchange is async — wait for dismissal.
+    await waitFor(() => !handleRef!.isDropdownOpen());
+    expect(handleRef!.isDropdownOpen()).toBe(false);
+  });
+
+  it('typing backtick with empty caret auto-closes it and places caret between', async () => {
+    let lastFormula = '';
+    let handleRef: FormulaEditorHandle | null = null;
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+        onChange: (f: string) => { lastFormula = f; },
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('`');
+    await waitFor(() => lastFormula === '``');
+    expect(lastFormula).toBe('``');
+    // Caret should sit between the pair — typing text appears inside.
+    await userEvent.type(locator, 'hi');
+    await waitFor(() => lastFormula === '`hi`');
+    expect(lastFormula).toBe('`hi`');
+    expect(handleRef).not.toBeNull();
+  });
+
+  it('typing backtick before an existing backtick steps over it', async () => {
+    let lastFormula = '';
+    renderInto(
+      React.createElement(FormulaEditor, {
+        defaultValue: '``',
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+        onChange: (f: string) => { lastFormula = f; },
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Caret lands at end after click; move between the two backticks.
+    await userEvent.keyboard('{Home}{ArrowRight}');
+    // Now caret is at position 1 (between `` and ``). Typing ` should
+    // step over rather than insert → formula stays the same, caret moves past.
+    await userEvent.keyboard('`');
+    // Small wait to make sure nothing inserted.
+    await new Promise(r => setTimeout(r, 100));
+    expect(lastFormula === '``' || lastFormula === '').toBe(true);
+    expect(el.textContent).toBe('``');
   });
 
   it('disabled editor is not editable', () => {

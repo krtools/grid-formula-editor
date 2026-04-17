@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Backtick auto-close. Typing `` ` `` with no selection inserts the pair `` `…` `` and places the caret between them. If the caret already sits right before a `` ` ``, typing `` ` `` steps past it instead of stacking a new pair — so typing the natural closer at the end of a template works as expected rather than producing `` ``abc`` ``.
+- `reopenDropdownOnClick` prop on `<FormulaEditor>`. When `true`, clicking inside an already-focused editor re-opens the autocomplete dropdown at the new caret position. Previously enabled unconditionally; now **off by default** so the click gesture doesn't surprise users who didn't opt in.
+- Autocomplete dropdown now auto-dismisses when the caret moves (via click or arrow-key navigation) to a position with no applicable suggestions or signature hint — e.g. into template text, inside a number literal, or past the end of an expression. Typing paths already reconciled dropdown visibility; this closes the loop for caret-only moves.
+
+### Changed
+
+- **Breaking:** The click-to-reopen-dropdown behavior added in the prior [0.3.0] pre-release is now gated behind the new `reopenDropdownOnClick` prop and defaults to off. Pass `reopenDropdownOnClick` to restore the earlier behavior.
+
 ## [0.3.0] - 2026-04-17
 
 ### Added

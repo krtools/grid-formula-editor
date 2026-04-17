@@ -63,6 +63,7 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       style,
       onFocus,
       onBlur,
+      reopenDropdownOnClick = false,
     } = props;
 
     const isControlled = controlledValue !== undefined;
@@ -202,7 +203,11 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Track caret moves (clicks, arrow keys) so matching-paren highlight follows.
+    // Track caret moves (clicks, arrow keys) so the matching-paren highlight
+    // follows and — if the dropdown is open — dismiss it when the caret lands
+    // in a position with no suggestions or signature hint (e.g. inside plain
+    // template text). Typing paths don't need this: processFormula already
+    // reconciles dropdown visibility on every input.
     React.useEffect(() => {
       if (!isFocused) return;
       const handler = () => {
@@ -211,11 +216,28 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0) return;
         if (!el.contains(sel.anchorNode)) return;
-        setCursorOffsetState(getCursorOffset(el));
+        const pos = getCursorOffset(el);
+        setCursorOffsetState(pos);
+
+        setShowDropdown(current => {
+          if (!current) return current;
+          const formula = el.textContent || '';
+          const ctx = getCursorContext(formula, pos);
+          const hasSuggs = getSuggestions(ctx, columns, functionDefs).length > 0;
+          const hasSignatureHint =
+            ctx.type === 'function-arg' &&
+            functionDefs.some(
+              f =>
+                f.name.toUpperCase() === ctx.functionName.toUpperCase() &&
+                f.parameters &&
+                f.parameters.length > 0,
+            );
+          return hasSuggs || hasSignatureHint ? current : false;
+        });
       };
       document.addEventListener('selectionchange', handler);
       return () => document.removeEventListener('selectionchange', handler);
-    }, [isFocused]);
+    }, [isFocused, columns, functionDefs]);
 
     // Hover → function signature tooltip.
     // Event-delegated onto the editor so it keeps working across re-renders
@@ -407,6 +429,37 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       // (key.length > 1) don't touch the flag — they leave prior state intact.
       if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
         suppressAutoSelectRef.current = !/[a-zA-Z0-9_]/.test(e.key);
+      }
+
+      // Auto-close backtick when typed with no selection: ` → `|` (caret
+      // between the pair). If the caret already sits before a closing
+      // backtick, step past it instead of stacking a new pair — otherwise
+      // typing the natural closer would produce `abc`` rather than `abc`.
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '`') {
+        const el = editorRef.current;
+        if (el) {
+          const { start, end } = getSelectionRange(el);
+          if (start === end) {
+            if (formulaValue.charAt(start) === '`') {
+              e.preventDefault();
+              pendingCursorRef.current = start + 1;
+              processFormula(formulaValue, start + 1);
+              return;
+            }
+            e.preventDefault();
+            const newFormula = formulaValue.slice(0, start) + '``' + formulaValue.slice(end);
+            const newCursor = start + 1;
+            if (typingGroupTimerRef.current) {
+              clearTimeout(typingGroupTimerRef.current);
+              typingGroupTimerRef.current = null;
+            }
+            undoStackRef.current.push({ value: newFormula, cursorPos: newCursor });
+            pendingCursorRef.current = newCursor;
+            if (!isControlled) setInternalValue(newFormula);
+            processFormula(newFormula, newCursor);
+            return;
+          }
+        }
       }
 
       // Auto-wrap selection with brackets or quotes when the user types
@@ -685,6 +738,7 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
 
     function handleClick() {
       if (disabled || readOnly) return;
+      if (!reopenDropdownOnClick) return;
       if (!wasFocusedAtMouseDownRef.current) return;
       if (showDropdown) return;
 

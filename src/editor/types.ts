@@ -227,4 +227,12 @@ export interface FormulaEditorProps {
   onFocus?: () => void;
   /** Called when the editor loses focus. */
   onBlur?: () => void;
+  /**
+   * When `true`, clicking inside the editor while it already has focus
+   * re-opens the autocomplete dropdown if the new caret position yields
+   * suggestions. Off by default — enable only if your UX benefits from
+   * surfacing suggestions on deliberate re-clicks. Independent of the
+   * dismiss-on-caret-move behavior, which is always active.
+   */
+  reopenDropdownOnClick?: boolean;
 }
