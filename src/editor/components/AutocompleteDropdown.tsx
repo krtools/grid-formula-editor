@@ -10,10 +10,8 @@ import {
   getDropdownItemLabelStyle,
   getDropdownItemDescStyle,
   getDropdownItemTypeStyle,
-  getSignatureHintStyle,
-  getSignatureParamStyle,
-  getSignatureDescStyle,
 } from '../styles/inlineStyles.js';
+import { SignatureHint } from './SignatureHint.js';
 
 interface SignatureHintInfo {
   functionDef: FunctionDef;
@@ -121,36 +119,13 @@ export function AutocompleteDropdown({
   // Build signature hint header
   let signatureHeader: React.ReactNode = null;
   if (hasSignature && signatureHint) {
-    const { functionDef, argIndex } = signatureHint;
-    const params = functionDef.parameters!;
-    const activeParam = params[Math.min(argIndex, params.length - 1)];
-    const isRestParam = activeParam?.rest;
-
     signatureHeader = (
-      <div style={getSignatureHintStyle(mergedColors, mergedStyles)}>
-        <span>{functionDef.name}(</span>
-        {params.map((p, i) => {
-          // For rest params, the active index can exceed the param list length
-          const isActive = isRestParam
-            ? i === params.length - 1 && argIndex >= i
-            : i === argIndex;
-          return (
-            <React.Fragment key={p.name}>
-              {i > 0 && <span>, </span>}
-              <span style={getSignatureParamStyle(isActive, mergedColors)}>
-                {p.rest ? `...${p.name}` : p.name}
-                {p.optional ? '?' : ''}
-              </span>
-            </React.Fragment>
-          );
-        })}
-        <span>)</span>
-        {activeParam?.description && (
-          <span style={getSignatureDescStyle(mergedColors)}>
-            {activeParam.name}: {activeParam.description}
-          </span>
-        )}
-      </div>
+      <SignatureHint
+        functionDef={signatureHint.functionDef}
+        argIndex={signatureHint.argIndex}
+        colors={mergedColors}
+        styles={mergedStyles}
+      />
     );
   }
 

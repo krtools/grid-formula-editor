@@ -14,7 +14,8 @@ interface HighlightedContentProps {
  * with dangerouslySetInnerHTML on the contentEditable element.
  *
  * Each token becomes a <span> with the appropriate color. Whitespace gaps
- * between tokens are inserted as plain text nodes.
+ * between tokens are inserted as plain text nodes. Function-name identifier
+ * tokens receive `data-fn-name` so hover tooltips can look them up.
  */
 export function buildHighlightedHTML(
   formula: string,
@@ -47,8 +48,10 @@ export function buildHighlightedHTML(
       ? 'text-decoration:wavy underline;text-decoration-color:' + colors.error + ';'
       : '';
 
+    const fnAttr = isFunctionName ? ` data-fn-name="${escapeHTMLAttr(text)}"` : '';
+
     parts.push(
-      `<span style="color:${color};font-weight:${fontWeight};${errorDecoration}">${escapeHTML(text)}</span>`
+      `<span style="color:${color};font-weight:${fontWeight};${errorDecoration}"${fnAttr}>${escapeHTML(text)}</span>`
     );
 
     lastEnd = token.end;
@@ -60,6 +63,14 @@ export function buildHighlightedHTML(
   }
 
   return parts.join('');
+}
+
+function escapeHTMLAttr(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   FormulaChangeInfo,
   AutocompleteSuggestion,
   CursorContext,
+  FunctionDef,
 } from '../types.js';
 import { BUILTIN_FUNCTIONS } from '../constants.js';
 import {
@@ -28,6 +29,9 @@ import { buildHighlightedHTML } from './HighlightedContent.js';
 import { AutocompleteDropdown } from './AutocompleteDropdown.js';
 import { ValidationSquiggles } from './ValidationSquiggles.js';
 import { MatchingParens } from './MatchingParens.js';
+import { FunctionTooltip } from './FunctionTooltip.js';
+
+const HOVER_TOOLTIP_DELAY_MS = 400;
 
 const WRAP_PAIRS: Record<string, string> = {
   '(': ')',
@@ -85,6 +89,12 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     const suppressAutoSelectRef = React.useRef(false);
     const [validationErrors, setValidationErrors] = React.useState<FormulaValidationError[]>([]);
     const [cursorOffset, setCursorOffsetState] = React.useState(0);
+    const [hoveredFunction, setHoveredFunction] = React.useState<{
+      def: FunctionDef;
+      rect: DOMRect;
+    } | null>(null);
+    const hoverTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hoverTargetRef = React.useRef<HTMLElement | null>(null);
 
     const formulaValue = isControlled ? controlledValue : internalValue;
     const mergedColors = React.useMemo(() => mergeColors(colorsProp), [colorsProp]);
@@ -198,6 +208,76 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       document.addEventListener('selectionchange', handler);
       return () => document.removeEventListener('selectionchange', handler);
     }, [isFocused]);
+
+    // Hover → function signature tooltip.
+    // Event-delegated onto the editor so it keeps working across re-renders
+    // that replace the inner highlighted spans. Only function-name spans
+    // (those with `data-fn-name`) trigger the tooltip.
+    React.useEffect(() => {
+      const el = editorRef.current;
+      if (!el) return;
+
+      function clearTimer() {
+        if (hoverTimerRef.current) {
+          clearTimeout(hoverTimerRef.current);
+          hoverTimerRef.current = null;
+        }
+      }
+
+      function findFnSpan(target: EventTarget | null): HTMLElement | null {
+        if (!(target instanceof HTMLElement)) return null;
+        return target.closest('[data-fn-name]') as HTMLElement | null;
+      }
+
+      function handleOver(e: MouseEvent) {
+        const span = findFnSpan(e.target);
+        if (!span) return;
+        if (hoverTargetRef.current === span) return;
+        hoverTargetRef.current = span;
+        clearTimer();
+        const name = span.getAttribute('data-fn-name');
+        if (!name) return;
+        const def = functionDefs.find(
+          f => f.name.toUpperCase() === name.toUpperCase(),
+        );
+        if (!def) return;
+        const rect = span.getBoundingClientRect();
+        hoverTimerRef.current = setTimeout(() => {
+          hoverTimerRef.current = null;
+          setHoveredFunction({ def, rect });
+        }, HOVER_TOOLTIP_DELAY_MS);
+      }
+
+      function handleOut(e: MouseEvent) {
+        const span = findFnSpan(e.target);
+        if (!span) return;
+        // Ignore moves to a descendant of the same span.
+        const to = e.relatedTarget;
+        if (to instanceof Node && span.contains(to)) return;
+        hoverTargetRef.current = null;
+        clearTimer();
+        setHoveredFunction(null);
+      }
+
+      el.addEventListener('mouseover', handleOver);
+      el.addEventListener('mouseout', handleOut);
+      return () => {
+        el.removeEventListener('mouseover', handleOver);
+        el.removeEventListener('mouseout', handleOut);
+        clearTimer();
+      };
+    }, [functionDefs]);
+
+    // Drop the tooltip whenever the formula or tokens change — positions
+    // would be stale after edits, and a fresh hover re-triggers it.
+    React.useEffect(() => {
+      setHoveredFunction(null);
+      hoverTargetRef.current = null;
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+    }, [formulaValue, tokens]);
 
     // Re-process when controlled value changes
     React.useEffect(() => {
@@ -657,6 +737,12 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
           visible={showDropdown}
           partial={partial}
           signatureHint={signatureHint}
+        />
+        <FunctionTooltip
+          functionDef={hoveredFunction?.def ?? null}
+          anchorRect={hoveredFunction?.rect ?? null}
+          colors={colorsProp}
+          styles={stylesProp}
         />
       </div>
     );

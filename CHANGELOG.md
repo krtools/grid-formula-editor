@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Hover tooltip on function-name tokens in the editor. After a short delay, hovering a function name (`ROUND`, `IF`, etc.) shows a floating box with the signature and description, reusing the same `SignatureHint` component (and styling) as the autocomplete dropdown's parameter header — so the visual language stays consistent between hover and in-call hints. Positioned above the hovered token via a portal.
+
 ### Changed
 
 - **Breaking:** Registered functions now receive a `FunctionContext` as their first argument. The context exposes `row` (the row currently being processed) and `column` (the name of the formula column being evaluated). Previous signature `(...args) => unknown` becomes `(ctx, ...args) => unknown`. Motivated by functions that need to consult row state beyond their explicit arguments (e.g. cross-column lookups).
