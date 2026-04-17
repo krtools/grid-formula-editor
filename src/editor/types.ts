@@ -132,13 +132,22 @@ export interface FormulaStyleConfig {
 /**
  * Cursor context — describes what the user is typing at the cursor position.
  * Used by the autocomplete engine to determine which suggestions to show.
+ *
+ * For the `column`, `bracket-column`, and `function` variants:
+ * - `partial` is what the user has typed so far for that token (used as the
+ *   prefix filter for the dropdown).
+ * - `start` is the token's start offset in the source formula, used to
+ *   compute the replacement range when a suggestion is accepted.
  */
 export type CursorContext =
   | { type: 'column'; partial: string; start: number }
   | { type: 'bracket-column'; partial: string; start: number }
   | { type: 'function'; partial: string; start: number }
+  /** Caret inside a function call — drives the signature/parameter hint. */
   | { type: 'function-arg'; functionName: string; argIndex: number }
+  /** Caret sits where any new expression is legal (start of input, after operator, …). */
   | { type: 'expression-start' }
+  /** Caret is inside a literal or elsewhere where no completion applies. */
   | { type: 'none' };
 
 /** A single autocomplete suggestion. */

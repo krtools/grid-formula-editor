@@ -1,9 +1,14 @@
 import { Token, TokenType, FormulaParseError } from '../../types.js';
 
+/** A single validation issue produced for the editor's squiggle underlines. */
 export interface FormulaValidationError {
+  /** Human-readable message — shown as the squiggle's title tooltip. */
   message: string;
+  /** Start offset (inclusive) of the offending source range. */
   start: number;
+  /** End offset (exclusive) of the offending source range. */
   end: number;
+  /** What kind of problem this squiggle marks. */
   type: 'parse' | 'unknown-function' | 'unknown-column';
 }
 
