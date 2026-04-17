@@ -46,10 +46,7 @@ function editorText(): string {
 describe('FormulaEditor browser tests', () => {
   it('renders with placeholder text', () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        placeholder: 'Enter formula...',
-        columns: COLUMNS,
-      }),
+      <FormulaEditor placeholder="Enter formula..." columns={COLUMNS} />,
     );
     const container = document.querySelector('[data-testid="formula-editor"]')?.parentElement;
     expect(container?.textContent).toContain('Enter formula...');
@@ -57,11 +54,7 @@ describe('FormulaEditor browser tests', () => {
 
   it('renders defaultValue and syntax highlights tokens', () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        defaultValue: 'price + 10',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      }),
+      <FormulaEditor defaultValue="price + 10" columns={COLUMNS} functions={FUNCTIONS} />,
     );
     const editor = editorEl();
     expect(editor.textContent).toBe('price + 10');
@@ -75,14 +68,14 @@ describe('FormulaEditor browser tests', () => {
     let lastInfo: FormulaChangeInfo | null = null;
 
     renderInto(
-      React.createElement(FormulaEditor, {
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-        onChange: (formula: string, info: FormulaChangeInfo) => {
+      <FormulaEditor
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={(formula, info) => {
           lastFormula = formula;
           lastInfo = info;
-        },
-      }),
+        }}
+      />,
     );
 
     const el = editorEl();
@@ -102,12 +95,12 @@ describe('FormulaEditor browser tests', () => {
     let lastInfo: FormulaChangeInfo | null = null;
 
     renderInto(
-      React.createElement(FormulaEditor, {
-        columns: COLUMNS,
-        onChange: (_: string, info: FormulaChangeInfo) => {
+      <FormulaEditor
+        columns={COLUMNS}
+        onChange={(_, info) => {
           lastInfo = info;
-        },
-      }),
+        }}
+      />,
     );
 
     const el = editorEl();
@@ -121,10 +114,7 @@ describe('FormulaEditor browser tests', () => {
 
   it('shows autocomplete dropdown on typing', async () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      }),
+      <FormulaEditor columns={COLUMNS} functions={FUNCTIONS} />,
     );
 
     const el = editorEl();
@@ -145,11 +135,7 @@ describe('FormulaEditor browser tests', () => {
 
   it('controlled mode reflects value prop', () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        value: 'ROUND(price, 2)',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      }),
+      <FormulaEditor value="ROUND(price, 2)" columns={COLUMNS} functions={FUNCTIONS} />,
     );
     expect(editorText()).toBe('ROUND(price, 2)');
   });
@@ -158,11 +144,11 @@ describe('FormulaEditor browser tests', () => {
     let handleRef: FormulaEditorHandle | null = null;
 
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        defaultValue: 'a + b',
-        columns: COLUMNS,
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        defaultValue="a + b"
+        columns={COLUMNS}
+      />,
     );
 
     expect(handleRef).not.toBeNull();
@@ -175,11 +161,11 @@ describe('FormulaEditor browser tests', () => {
   it('imperative handle exposes dropdown open + selected state', async () => {
     let handleRef: FormulaEditorHandle | null = null;
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+      />,
     );
 
     expect(handleRef!.isDropdownOpen()).toBe(false);
@@ -201,13 +187,13 @@ describe('FormulaEditor browser tests', () => {
   it('clicking while already focused reopens the dropdown when reopenDropdownOnClick is enabled', async () => {
     let handleRef: FormulaEditorHandle | null = null;
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        defaultValue: 'price + quantity',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-        reopenDropdownOnClick: true,
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        defaultValue="price + quantity"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        reopenDropdownOnClick
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -227,12 +213,12 @@ describe('FormulaEditor browser tests', () => {
   it('clicking while focused does NOT reopen the dropdown by default (flag off)', async () => {
     let handleRef: FormulaEditorHandle | null = null;
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        defaultValue: 'price + quantity',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        defaultValue="price + quantity"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -250,12 +236,12 @@ describe('FormulaEditor browser tests', () => {
   it('arrow navigation to a no-context caret position dismisses the dropdown', async () => {
     let handleRef: FormulaEditorHandle | null = null;
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        defaultValue: '42',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        defaultValue="42"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -275,12 +261,12 @@ describe('FormulaEditor browser tests', () => {
   it('clicking into template text dismisses an open dropdown', async () => {
     let handleRef: FormulaEditorHandle | null = null;
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        defaultValue: '`hello world`',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        defaultValue="`hello world`"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -325,12 +311,12 @@ describe('FormulaEditor browser tests', () => {
     let lastFormula = '';
     let handleRef: FormulaEditorHandle | null = null;
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-        onChange: (f: string) => { lastFormula = f; },
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -348,12 +334,12 @@ describe('FormulaEditor browser tests', () => {
   it('typing backtick before an existing backtick steps over it', async () => {
     let lastFormula = '';
     renderInto(
-      React.createElement(FormulaEditor, {
-        defaultValue: '``',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-        onChange: (f: string) => { lastFormula = f; },
-      } as any),
+      <FormulaEditor
+        defaultValue="``"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -371,11 +357,7 @@ describe('FormulaEditor browser tests', () => {
 
   it('disabled editor is not editable', () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        defaultValue: 'price',
-        disabled: true,
-        columns: COLUMNS,
-      }),
+      <FormulaEditor defaultValue="price" disabled columns={COLUMNS} />,
     );
     const el = editorEl();
     expect(el.contentEditable).toBe('false');
@@ -383,11 +365,7 @@ describe('FormulaEditor browser tests', () => {
 
   it('readOnly editor is not editable', () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        defaultValue: 'price',
-        readOnly: true,
-        columns: COLUMNS,
-      }),
+      <FormulaEditor defaultValue="price" readOnly columns={COLUMNS} />,
     );
     const el = editorEl();
     expect(el.contentEditable).toBe('false');
@@ -395,10 +373,7 @@ describe('FormulaEditor browser tests', () => {
 
   it('Ctrl+Space manually triggers autocomplete', async () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      }),
+      <FormulaEditor columns={COLUMNS} functions={FUNCTIONS} />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -420,12 +395,12 @@ describe('FormulaEditor browser tests', () => {
     let handleRef: FormulaEditorHandle | null = null;
     let lastFormula = 'price';
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        defaultValue: 'price',
-        columns: COLUMNS,
-        onChange: (formula: string) => { lastFormula = formula; },
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        defaultValue="price"
+        columns={COLUMNS}
+        onChange={formula => { lastFormula = formula; }}
+      />,
     );
 
     const el = editorEl();
@@ -445,12 +420,12 @@ describe('FormulaEditor browser tests', () => {
     let handleRef: FormulaEditorHandle | null = null;
     let lastFormula = 'hello';
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        defaultValue: 'hello',
-        columns: COLUMNS,
-        onChange: (formula: string) => { lastFormula = formula; },
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        defaultValue="hello"
+        columns={COLUMNS}
+        onChange={formula => { lastFormula = formula; }}
+      />,
     );
 
     const el = editorEl();
@@ -465,10 +440,7 @@ describe('FormulaEditor browser tests', () => {
 
   it('End key jumps selection to last dropdown item', async () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      }),
+      <FormulaEditor columns={COLUMNS} functions={FUNCTIONS} />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -496,12 +468,12 @@ describe('FormulaEditor browser tests', () => {
   it('auto-wraps selection with { }', async () => {
     let lastFormula = '';
     renderInto(
-      React.createElement(FormulaEditor, {
-        defaultValue: '`Hello world`',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-        onChange: (formula: string) => { lastFormula = formula; },
-      } as any),
+      <FormulaEditor
+        defaultValue="`Hello world`"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={formula => { lastFormula = formula; }}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -546,11 +518,11 @@ describe('FormulaEditor browser tests', () => {
 
   it('auto-wrapping with ( does not auto-select dropdown item', async () => {
     renderInto(
-      React.createElement(FormulaEditor, {
-        defaultValue: 'price * quantity',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-      }),
+      <FormulaEditor
+        defaultValue="price * quantity"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -575,12 +547,12 @@ describe('FormulaEditor browser tests', () => {
     let handleRef: FormulaEditorHandle | null = null;
     let lastFormula = '';
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-        onChange: (formula: string) => { lastFormula = formula; },
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={formula => { lastFormula = formula; }}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
@@ -606,13 +578,13 @@ describe('FormulaEditor browser tests', () => {
     let handleRef: FormulaEditorHandle | null = null;
     let lastFormula = '';
     renderInto(
-      React.createElement(FormulaEditor, {
-        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
-        defaultValue: 'r()',
-        columns: COLUMNS,
-        functions: FUNCTIONS,
-        onChange: (formula: string) => { lastFormula = formula; },
-      } as any),
+      <FormulaEditor
+        ref={h => { handleRef = h; }}
+        defaultValue="r()"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={formula => { lastFormula = formula; }}
+      />,
     );
     const el = editorEl();
     const locator = page.elementLocator(el);
