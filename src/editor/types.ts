@@ -177,6 +177,13 @@ export interface FormulaEditorHandle {
   blur: () => void;
   /** Returns the underlying contentEditable DOM element. */
   getElement: () => HTMLDivElement | null;
+  /** True while the autocomplete dropdown is visible. */
+  isDropdownOpen: () => boolean;
+  /**
+   * The autocomplete suggestion that Enter/Tab would currently insert, or
+   * `null` when no item is highlighted (fresh dropdown or cleared selection).
+   */
+  getSelectedSuggestion: () => AutocompleteSuggestion | null;
 }
 
 /**

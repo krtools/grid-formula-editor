@@ -130,6 +130,9 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       focus: () => editorRef.current?.focus(),
       blur: () => editorRef.current?.blur(),
       getElement: () => editorRef.current,
+      isDropdownOpen: () => showDropdown,
+      getSelectedSuggestion: () =>
+        showDropdown && selectedIndex >= 0 ? suggestions[selectedIndex] ?? null : null,
     }));
 
     // Tokenize + parse on value change

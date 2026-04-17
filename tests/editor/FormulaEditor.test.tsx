@@ -172,6 +172,32 @@ describe('FormulaEditor browser tests', () => {
     expect(handleRef!.getValue()).toBe('x * y');
   });
 
+  it('imperative handle exposes dropdown open + selected state', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+      } as any),
+    );
+
+    expect(handleRef!.isDropdownOpen()).toBe(false);
+    expect(handleRef!.getSelectedSuggestion()).toBeNull();
+
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Typing `ROU` opens the dropdown and auto-selects ROUND (filter-extending chars)
+    await userEvent.type(locator, 'ROU');
+    await waitFor(() => handleRef!.isDropdownOpen() && handleRef!.getSelectedSuggestion() !== null);
+    expect(handleRef!.isDropdownOpen()).toBe(true);
+    const sel = handleRef!.getSelectedSuggestion();
+    expect(sel).not.toBeNull();
+    expect(sel!.type).toBe('function');
+    expect(sel!.name).toBe('ROUND');
+  });
+
   it('disabled editor is not editable', () => {
     renderInto(
       React.createElement(FormulaEditor, {
