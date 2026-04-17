@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `FormulaEditorHandle` now exposes `isDropdownOpen()` and `getSelectedSuggestion()` so consumers can observe autocomplete state imperatively (e.g. to intercept Enter only when no suggestion is highlighted).
 - Clicking inside the editor while it already has focus reopens the autocomplete dropdown if the new caret position would yield suggestions. The first click (the one that focuses the editor) does nothing extra — only re-clicks on an already-focused editor reopen the dropdown. Active drag-selections are skipped.
 
+### Fixed
+
+- Missing validation squiggle for trailing binary operators (e.g. `ABS(price * quantity) + `). The parser raised a zero-width parse error at EOF, which the squiggle renderer filtered out (`r.width < 1`). The validator now re-anchors zero-width EOF errors to the last non-EOF token with the message "Unexpected end of formula", so the `+` gets a red squiggle. Unclosed-paren cases are unchanged — they still emit a targeted error at the opening `(` instead of at the end.
+
 ### Changed
 
 - **Breaking:** Registered functions now receive a `FunctionContext` as their first argument. The context exposes `row` (the row currently being processed) and `column` (the name of the formula column being evaluated). Previous signature `(...args) => unknown` becomes `(ctx, ...args) => unknown`. Motivated by functions that need to consult row state beyond their explicit arguments (e.g. cross-column lookups).

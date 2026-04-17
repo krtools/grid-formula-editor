@@ -24,20 +24,9 @@ export function validateFormula(
 ): FormulaValidationError[] {
   const errors: FormulaValidationError[] = [];
 
-  // Include parse error if present
-  if (parseError) {
-    errors.push({
-      message: parseError.message,
-      start: parseError.start,
-      end: parseError.end,
-      type: 'parse',
-    });
-  }
-
-  // Detect unclosed parens and unclosed template interpolations.
-  // The base parse error for these lands at EOF (zero-width, suppressed by the
-  // squiggle renderer and deferred by the cursor-position guard), so emit
-  // targeted errors at the opening token instead.
+  // Build the open-delimiter stack first — unclosed parens/interpolations get
+  // targeted errors at the opening token, which stand in for the zero-width
+  // EOF parse error the parser produces in those cases.
   const openStack: Token[] = [];
   for (const token of tokens) {
     if (token.type === TokenType.LPAREN || token.type === TokenType.TEMPLATE_INTERP_START) {
@@ -48,6 +37,32 @@ export function validateFormula(
       if (openStack.length > 0) openStack.pop();
     }
   }
+
+  if (parseError) {
+    let start = parseError.start;
+    let end = parseError.end;
+    let message = parseError.message;
+    // Zero-width parse errors (typically EOF) are invisible to the squiggle
+    // renderer. If there's an unclosed-paren error below to stand in, drop
+    // this one; otherwise re-anchor to the last non-EOF token so the user
+    // sees something highlighted (e.g. a trailing binary operator).
+    if (start === end) {
+      if (openStack.length === 0) {
+        for (let i = tokens.length - 1; i >= 0; i--) {
+          if (tokens[i].type !== TokenType.EOF) {
+            start = tokens[i].start;
+            end = tokens[i].end;
+            message = 'Unexpected end of formula';
+            break;
+          }
+        }
+      }
+    }
+    if (start !== end) {
+      errors.push({ message, start, end, type: 'parse' });
+    }
+  }
+
   for (const open of openStack) {
     const message = open.type === TokenType.LPAREN ? 'Unclosed parenthesis' : 'Unclosed interpolation';
     errors.push({ message, start: open.start, end: open.end, type: 'parse' });

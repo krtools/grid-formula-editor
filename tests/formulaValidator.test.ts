@@ -198,4 +198,41 @@ describe('validateFormula', () => {
     const unclosed = errors.find(e => e.message === 'Unclosed interpolation');
     expect(unclosed).toBeDefined();
   });
+
+  it('re-anchors zero-width EOF parse errors to the last token (trailing operator)', () => {
+    const formula = 'ABS(price * quantity) + ';
+    const { tokens } = tokenizeSafe(formula);
+    const parseError = getParseError(formula);
+    expect(parseError).not.toBeNull();
+    expect(parseError!.start).toBe(parseError!.end);
+    const errors = validateFormula(tokens, parseError, KNOWN);
+    const parseErrors = errors.filter(e => e.type === 'parse');
+    expect(parseErrors).toHaveLength(1);
+    // Should land on the "+" token (positions 22–23 in the formula).
+    expect(parseErrors[0].start).toBe(22);
+    expect(parseErrors[0].end).toBe(23);
+    expect(parseErrors[0].start).toBeLessThan(parseErrors[0].end);
+    expect(parseErrors[0].message).toBe('Unexpected end of formula');
+  });
+
+  it('re-anchored trailing-operator parse error has non-zero width', () => {
+    const formula = '1 +';
+    const { tokens } = tokenizeSafe(formula);
+    const parseError = getParseError(formula);
+    const errors = validateFormula(tokens, parseError, KNOWN);
+    const parseErrors = errors.filter(e => e.type === 'parse');
+    expect(parseErrors).toHaveLength(1);
+    expect(parseErrors[0].end).toBeGreaterThan(parseErrors[0].start);
+  });
+
+  it('unclosed paren skips the redundant EOF parse error', () => {
+    const formula = 'SQRT(';
+    const { tokens } = tokenizeSafe(formula);
+    const parseError = getParseError(formula);
+    const errors = validateFormula(tokens, parseError, KNOWN);
+    // Only the targeted "Unclosed parenthesis" error should remain; the
+    // zero-width EOF parse error is dropped so we don't double-report.
+    expect(errors.filter(e => e.type === 'parse')).toHaveLength(1);
+    expect(errors[0].message).toBe('Unclosed parenthesis');
+  });
 });
