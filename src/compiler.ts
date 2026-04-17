@@ -11,6 +11,7 @@ import {
   FormulaErrorCode,
   FormulaErrorSeverity,
   FormulaEvalError,
+  FunctionContext,
 } from './types.js';
 
 interface CompiledColumn {
@@ -28,7 +29,10 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
   const functionRegistry = createBuiltinFunctions();
   if (customFunctions) {
     for (const [name, fn] of Object.entries(customFunctions)) {
-      functionRegistry.set(name.toUpperCase(), fn);
+      functionRegistry.set(name.toUpperCase(), fn as (
+        ctx: FunctionContext<unknown>,
+        ...args: unknown[]
+      ) => unknown);
     }
   }
 
@@ -149,8 +153,9 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
             if (!fn) {
               throw new FormulaEvalError('FUNCTION_ERROR', `Unknown function: ${name}`);
             }
+            const fnCtx: FunctionContext<T> = { row, column: col.name };
             try {
-              return fn(...args);
+              return fn(fnCtx as FunctionContext<unknown>, ...args);
             } catch (cause) {
               if (cause instanceof FormulaEvalError) throw cause;
               throw new FormulaEvalError(

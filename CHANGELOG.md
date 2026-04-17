@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Registered functions now receive a `FunctionContext` as their first argument. The context exposes `row` (the row currently being processed) and `column` (the name of the formula column being evaluated). Previous signature `(...args) => unknown` becomes `(ctx, ...args) => unknown`. Motivated by functions that need to consult row state beyond their explicit arguments (e.g. cross-column lookups).
+
 ## [0.2.2] - 2026-04-17
 
 ### Fixed

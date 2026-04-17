@@ -6,7 +6,7 @@ type Row = Record<string, unknown>;
 
 function makeProcessor(
   formulas: Record<string, string>,
-  customFunctions?: Record<string, (...args: unknown[]) => unknown>,
+  customFunctions?: Record<string, (ctx: { row: Row; column: string }, ...args: unknown[]) => unknown>,
   onError?: (error: FormulaError, row?: Row) => unknown,
 ) {
   const columns = Object.entries(formulas).map(([name, formula]) => ({ name, formula }));
@@ -844,7 +844,7 @@ describe('custom functions', () => {
   it('registers and calls a custom function', () => {
     const proc = makeProcessor(
       { result: 'DOUBLE(value)' },
-      { DOUBLE: (n: unknown) => (n as number) * 2 },
+      { DOUBLE: (_ctx, n: unknown) => (n as number) * 2 },
     );
     const row: Row = { value: 21 };
     proc.process(row);
@@ -864,11 +864,42 @@ describe('custom functions', () => {
   it('custom function names are case-insensitive', () => {
     const proc = makeProcessor(
       { result: 'myFunc(value)' },
-      { myfunc: (n: unknown) => (n as number) + 100 },
+      { myfunc: (_ctx, n: unknown) => (n as number) + 100 },
     );
     const row: Row = { value: 1 };
     proc.process(row);
     expect(row.result).toBe(101);
+  });
+
+  it('passes a FunctionContext with the row and current column', () => {
+    let captured: { row: Row; column: string } | null = null;
+    const proc = makeProcessor(
+      { label: 'TAG(value)' },
+      {
+        TAG: (ctx, v: unknown) => {
+          captured = { row: ctx.row, column: ctx.column };
+          return v;
+        },
+      },
+    );
+    const row: Row = { value: 'x' };
+    proc.process(row);
+    expect(captured).not.toBeNull();
+    expect(captured!.column).toBe('label');
+    expect(captured!.row).toBe(row);
+  });
+
+  it('context.row reflects formula-column outputs as they complete', () => {
+    const proc = makeProcessor(
+      {
+        doubled: 'value * 2',
+        readDoubled: 'READ(doubled)',
+      },
+      { READ: (ctx) => (ctx.row as Row).doubled },
+    );
+    const row: Row = { value: 5 };
+    proc.process(row);
+    expect(row.readDoubled).toBe(10);
   });
 });
 

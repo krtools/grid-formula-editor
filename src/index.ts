@@ -12,6 +12,8 @@ export type {
   FormulaColumn,
   CompileOptions,
   CompiledProcessor,
+  CompiledFormulaFunction,
+  FunctionContext,
   FormulaError,
   FormulaErrorCode,
   FormulaErrorSeverity,
