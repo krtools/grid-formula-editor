@@ -483,9 +483,12 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         replaceStart = ctx.start;
         replaceEnd = ctx.start + ctx.partial.length;
       } else if (ctx.type === 'bracket-column') {
-        replaceStart = ctx.start;
-        // Replace from [ to cursor position
-        replaceEnd = ctx.start + 1 + ctx.partial.length; // +1 for the [
+        // Replace only the content between the `[` and the cursor — keep the
+        // `[` the user already typed. Bracket-column suggestions carry their
+        // own trailing `]`; duplicate-`]` handling is further below, after
+        // insertText is available.
+        replaceStart = ctx.start + 1;
+        replaceEnd = ctx.start + 1 + ctx.partial.length;
       } else {
         // expression-start or function-arg — insert at cursor
         const cursorPos = getCursorOffset(el);
@@ -523,7 +526,20 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
             : replaceStart + insertText.length - 1;
         }
       } else {
-        newCursorPos = replaceStart + insertText.length;
+        // If we're completing a bracket-column and a `]` already sits right
+        // after the replaced partial, swallow the suggestion's trailing `]`
+        // and land the caret past the existing closer — otherwise `[pri]`
+        // would autocomplete to `[price]]`.
+        if (
+          ctx.type === 'bracket-column' &&
+          formula.charAt(replaceEnd) === ']' &&
+          insertText.endsWith(']')
+        ) {
+          insertText = insertText.slice(0, -1);
+          newCursorPos = replaceStart + insertText.length + 1;
+        } else {
+          newCursorPos = replaceStart + insertText.length;
+        }
       }
 
       const newFormula =

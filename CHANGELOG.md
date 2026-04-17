@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Invisible gap below the editor in inline layouts. The container was `display: inline-block`, which participates in baseline alignment; combined with `overflow-x: auto` on the editable div (whose baseline then becomes its bottom margin edge per CSS 2.1), the inline-block's baseline was pushed down, leaving a gap below the input. Switched the container to `display: block` — it had `width: 100%` anyway, so no layout change for normal usage.
+- Bracket-column autocomplete when the user has pre-typed brackets. Previously `[pri` + complete produced `price]` (the opening `[` was clobbered), and `[pri]` with the caret before the `]` produced `[price]]` (the trailing `]` was duplicated). The replacement now starts after the opening `[` and swallows an existing trailing `]` when present.
 
 ## [0.2.1] - 2026-04-16
 
