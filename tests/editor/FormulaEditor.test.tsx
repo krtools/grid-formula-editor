@@ -198,6 +198,31 @@ describe('FormulaEditor browser tests', () => {
     expect(sel!.name).toBe('ROUND');
   });
 
+  it('clicking while already focused reopens the dropdown', async () => {
+    let handleRef: FormulaEditorHandle | null = null;
+    renderInto(
+      React.createElement(FormulaEditor, {
+        ref: (h: FormulaEditorHandle | null) => { handleRef = h; },
+        defaultValue: 'price + quantity',
+        columns: COLUMNS,
+        functions: FUNCTIONS,
+      } as any),
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+
+    // First click just focuses — dropdown should stay closed.
+    await locator.click();
+    // Give focus event a frame to propagate
+    await new Promise(r => setTimeout(r, 50));
+    expect(handleRef!.isDropdownOpen()).toBe(false);
+
+    // Second click, now that the editor is focused, should open the dropdown.
+    await locator.click();
+    await waitFor(() => handleRef!.isDropdownOpen());
+    expect(handleRef!.isDropdownOpen()).toBe(true);
+  });
+
   it('disabled editor is not editable', () => {
     renderInto(
       React.createElement(FormulaEditor, {

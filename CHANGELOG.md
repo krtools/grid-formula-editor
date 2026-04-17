@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Hover tooltip on function-name tokens in the editor. After a short delay, hovering a function name (`ROUND`, `IF`, etc.) shows a floating box with the signature and description, reusing the same `SignatureHint` component (and styling) as the autocomplete dropdown's parameter header — so the visual language stays consistent between hover and in-call hints. Positioned above the hovered token via a portal.
 - `FormulaEditorHandle` now exposes `isDropdownOpen()` and `getSelectedSuggestion()` so consumers can observe autocomplete state imperatively (e.g. to intercept Enter only when no suggestion is highlighted).
+- Clicking inside the editor while it already has focus reopens the autocomplete dropdown if the new caret position would yield suggestions. The first click (the one that focuses the editor) does nothing extra — only re-clicks on an already-focused editor reopen the dropdown. Active drag-selections are skipped.
 
 ### Changed
 

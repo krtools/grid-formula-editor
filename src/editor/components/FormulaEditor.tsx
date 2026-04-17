@@ -95,6 +95,10 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     } | null>(null);
     const hoverTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverTargetRef = React.useRef<HTMLElement | null>(null);
+    // Focus state at the start of a mousedown — used by the click handler
+    // to tell "click to focus" (do nothing) from "click while already focused"
+    // (re-open the dropdown if appropriate).
+    const wasFocusedAtMouseDownRef = React.useRef(false);
 
     const formulaValue = isControlled ? controlledValue : internalValue;
     const mergedColors = React.useMemo(() => mergeColors(colorsProp), [colorsProp]);
@@ -671,6 +675,51 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
       }, 150);
     }
 
+    function handleMouseDown() {
+      // Snapshot focus state so handleClick can distinguish "click to focus"
+      // from "click while already focused" — only the latter should re-open
+      // the dropdown.
+      wasFocusedAtMouseDownRef.current = isFocused;
+    }
+
+    function handleClick() {
+      if (disabled || readOnly) return;
+      if (!wasFocusedAtMouseDownRef.current) return;
+      if (showDropdown) return;
+
+      const el = editorRef.current;
+      if (!el) return;
+
+      // Don't open while the user has an active selection (drag-select).
+      const { start, end } = getSelectionRange(el);
+      if (start !== end) return;
+
+      const cursorPos = getCursorOffset(el);
+      const ctx = getCursorContext(formulaValue, cursorPos);
+      cursorContextRef.current = ctx;
+      const suggs = getSuggestions(ctx, columns, functionDefs);
+
+      const hasSignatureHint =
+        ctx.type === 'function-arg' &&
+        functionDefs.some(
+          f =>
+            f.name.toUpperCase() === ctx.functionName.toUpperCase() &&
+            f.parameters &&
+            f.parameters.length > 0,
+        );
+
+      if (suggs.length === 0 && !hasSignatureHint) return;
+
+      // Click is a deliberate caret placement — auto-select the first match
+      // when there's a filter, so Enter/Tab will insert it.
+      const hasPartial =
+        ctx.type === 'column' || ctx.type === 'function' || ctx.type === 'bracket-column';
+      setSuggestions(suggs);
+      setSelectedIndex(hasPartial && suggs.length > 0 ? 0 : -1);
+      setShowDropdown(true);
+      updateDropdownPosition();
+    }
+
     const containerStyles = getContainerStyle(style);
     const editorStyles: React.CSSProperties = {
       ...getEditorStyle(mergedColors, mergedStyles),
@@ -708,6 +757,8 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
           onPaste={handlePaste}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onMouseDown={handleMouseDown}
+          onClick={handleClick}
           dangerouslySetInnerHTML={{ __html: highlightedHTML }}
           data-testid="formula-editor"
         />
