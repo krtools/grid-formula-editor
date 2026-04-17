@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Backtick auto-close. Typing `` ` `` with no selection inserts the pair `` `…` `` and places the caret between them. If the caret already sits right before a `` ` ``, typing `` ` `` steps past it instead of stacking a new pair — so typing the natural closer at the end of a template works as expected rather than producing `` ``abc`` ``.
+- String-delimiter auto-close. Typing `` ` ``, `"`, or `'` with no selection inserts the pair and places the caret between. If the caret already sits right before a matching closer, typing the same char steps past it instead of stacking a new pair — so typing the natural closer at the end of a string works as expected rather than producing doubled delimiters.
 - `reopenDropdownOnClick` prop on `<FormulaEditor>`. When `true`, clicking inside an already-focused editor re-opens the autocomplete dropdown at the new caret position. Previously enabled unconditionally; now **off by default** so the click gesture doesn't surprise users who didn't opt in.
 - Autocomplete dropdown now auto-dismisses when the caret moves (via click or arrow-key navigation) to a position with no applicable suggestions or signature hint — e.g. into template text, inside a number literal, or past the end of an expression. Typing paths already reconciled dropdown visibility; this closes the loop for caret-only moves.
 

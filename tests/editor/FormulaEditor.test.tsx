@@ -355,6 +355,86 @@ describe('FormulaEditor browser tests', () => {
     expect(el.textContent).toBe('``');
   });
 
+  it('typing " with empty caret auto-closes it and places caret between', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('"');
+    await waitFor(() => lastFormula === '""');
+    expect(lastFormula).toBe('""');
+    await userEvent.type(locator, 'hi');
+    await waitFor(() => lastFormula === '"hi"');
+    expect(lastFormula).toBe('"hi"');
+  });
+
+  it('typing " before an existing " steps over it', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue={'""'}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('{Home}{ArrowRight}');
+    await userEvent.keyboard('"');
+    await new Promise(r => setTimeout(r, 100));
+    expect(lastFormula === '""' || lastFormula === '').toBe(true);
+    expect(el.textContent).toBe('""');
+  });
+
+  it("typing ' with empty caret auto-closes it and places caret between", async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard("'");
+    await waitFor(() => lastFormula === "''");
+    expect(lastFormula).toBe("''");
+    await userEvent.type(locator, 'hi');
+    await waitFor(() => lastFormula === "'hi'");
+    expect(lastFormula).toBe("'hi'");
+  });
+
+  it("typing ' before an existing ' steps over it", async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue={"''"}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('{Home}{ArrowRight}');
+    await userEvent.keyboard("'");
+    await new Promise(r => setTimeout(r, 100));
+    expect(lastFormula === "''" || lastFormula === '').toBe(true);
+    expect(el.textContent).toBe("''");
+  });
+
   it('disabled editor is not editable', () => {
     renderInto(
       <FormulaEditor defaultValue="price" disabled columns={COLUMNS} />,

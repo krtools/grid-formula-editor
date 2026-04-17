@@ -431,23 +431,25 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         suppressAutoSelectRef.current = !/[a-zA-Z0-9_]/.test(e.key);
       }
 
-      // Auto-close backtick when typed with no selection: ` → `|` (caret
-      // between the pair). If the caret already sits before a closing
-      // backtick, step past it instead of stacking a new pair — otherwise
-      // typing the natural closer would produce `abc`` rather than `abc`.
-      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '`') {
+      // Auto-close string delimiters (`, ", ') when typed with no selection:
+      // the delimiter is paired and the caret is placed between. If the caret
+      // already sits before a matching closer, step past it instead of
+      // stacking a new pair — so typing the natural closer at the end of a
+      // string produces `abc` / "abc" / 'abc' rather than doubled delimiters.
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '`' || e.key === '"' || e.key === "'")) {
         const el = editorRef.current;
         if (el) {
           const { start, end } = getSelectionRange(el);
           if (start === end) {
-            if (formulaValue.charAt(start) === '`') {
+            const ch = e.key;
+            if (formulaValue.charAt(start) === ch) {
               e.preventDefault();
               pendingCursorRef.current = start + 1;
               processFormula(formulaValue, start + 1);
               return;
             }
             e.preventDefault();
-            const newFormula = formulaValue.slice(0, start) + '``' + formulaValue.slice(end);
+            const newFormula = formulaValue.slice(0, start) + ch + ch + formulaValue.slice(end);
             const newCursor = start + 1;
             if (typingGroupTimerRef.current) {
               clearTimeout(typingGroupTimerRef.current);
