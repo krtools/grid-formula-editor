@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-21
+
 ### Added
 
 - Template interpolation brace auto-close. Typing `{` with no selection in **template text** (between `` ` `` or `}` and `{` or `` ` ``) pairs it to `{}` with the caret between — e.g. `` `hello|` `` + `{` yields `` `hello{|}` ``. Inside an interpolation's expression space (including nested string literals like `` `{'|'}` ``) `{` stays a plain character, so string contents aren't surprised by pairing. Typing `}` right before an existing `}` while inside an interpolation steps past it rather than stacking a new one, so `` `{foo|}` `` + `}` yields `` `{foo}|` `` instead of `` `{foo}}` ``.
@@ -109,7 +111,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/krtools/grid-formula-editor/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/krtools/grid-formula-editor/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/krtools/grid-formula-editor/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/krtools/grid-formula-editor/compare/v0.2.1...v0.2.2
