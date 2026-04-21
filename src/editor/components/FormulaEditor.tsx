@@ -2,7 +2,7 @@ import * as React from 'react';
 import { flushSync } from 'react-dom';
 import { tokenizeSafe } from '../../tokenizer.js';
 import { parse } from '../../parser.js';
-import { Token, ASTNode, FormulaParseError } from '../../types.js';
+import { Token, TokenType, ASTNode, FormulaParseError } from '../../types.js';
 import {
   FormulaEditorProps,
   FormulaEditorHandle,
@@ -41,6 +41,26 @@ const WRAP_PAIRS: Record<string, string> = {
   "'": "'",
   '`': '`',
 };
+
+// Walks tokens up to the cursor and classifies the template context:
+//   0 = outside any template literal
+//   1 = inside template text (between `` ` `` or `}` and `{` or `` ` ``)
+//   2 = inside a template interpolation's expression space
+// `{` auto-pair only makes sense in state 1 — in state 2 we're in expression
+// grammar (possibly inside a nested string literal) where `{` is a plain
+// character. `}` step-over only makes sense in state 2, closing the interp.
+function templateStateAt(formula: string, cursor: number): 0 | 1 | 2 {
+  const { tokens } = tokenizeSafe(formula);
+  let state: 0 | 1 | 2 = 0;
+  for (const t of tokens) {
+    if (t.end > cursor) break;
+    if (t.type === TokenType.TEMPLATE_START) state = 1;
+    else if (t.type === TokenType.TEMPLATE_END) state = 0;
+    else if (t.type === TokenType.TEMPLATE_INTERP_START) state = 2;
+    else if (t.type === TokenType.TEMPLATE_INTERP_END) state = 1;
+  }
+  return state;
+}
 
 /**
  * FormulaEditor — a contentEditable React component with syntax highlighting,
@@ -460,6 +480,44 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
             if (!isControlled) setInternalValue(newFormula);
             processFormula(newFormula, newCursor);
             return;
+          }
+        }
+      }
+
+      // Auto-close template braces (`{`, `}`) when typed with no selection
+      // in the correct template context. `{` pairs to `{}` in template text
+      // only — it opens an interpolation there. In interpolation-space
+      // (including nested string literals like `` `{'|'}` ``) `{` is a plain
+      // character and gets no special treatment. `}` steps past an existing
+      // `}` when inside an interpolation, so `` `{foo|}` `` + `}` produces
+      // `` `{foo}|` `` rather than stacking a second `}`.
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '{' || e.key === '}')) {
+        const el = editorRef.current;
+        if (el) {
+          const { start, end } = getSelectionRange(el);
+          if (start === end) {
+            const state = templateStateAt(formulaValue, start);
+            const ch = e.key;
+            if (ch === '}' && state === 2 && formulaValue.charAt(start) === '}') {
+              e.preventDefault();
+              pendingCursorRef.current = start + 1;
+              processFormula(formulaValue, start + 1);
+              return;
+            }
+            if (ch === '{' && state === 1) {
+              e.preventDefault();
+              const newFormula = formulaValue.slice(0, start) + '{}' + formulaValue.slice(end);
+              const newCursor = start + 1;
+              if (typingGroupTimerRef.current) {
+                clearTimeout(typingGroupTimerRef.current);
+                typingGroupTimerRef.current = null;
+              }
+              undoStackRef.current.push({ value: newFormula, cursorPos: newCursor });
+              pendingCursorRef.current = newCursor;
+              if (!isControlled) setInternalValue(newFormula);
+              processFormula(newFormula, newCursor);
+              return;
+            }
           }
         }
       }

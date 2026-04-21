@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Template interpolation brace auto-close. Typing `{` with no selection in **template text** (between `` ` `` or `}` and `{` or `` ` ``) pairs it to `{}` with the caret between — e.g. `` `hello|` `` + `{` yields `` `hello{|}` ``. Inside an interpolation's expression space (including nested string literals like `` `{'|'}` ``) `{` stays a plain character, so string contents aren't surprised by pairing. Typing `}` right before an existing `}` while inside an interpolation steps past it rather than stacking a new one, so `` `{foo|}` `` + `}` yields `` `{foo}|` `` instead of `` `{foo}}` ``.
+
 ## [0.4.0] - 2026-04-17
 
 ### Added

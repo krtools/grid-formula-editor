@@ -435,6 +435,89 @@ describe('FormulaEditor browser tests', () => {
     expect(el.textContent).toBe("''");
   });
 
+  it('typing { inside a template auto-closes it and places caret between', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue="``"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Move caret between the two backticks.
+    await userEvent.keyboard('{Home}{ArrowRight}');
+    // Escape `{` in userEvent.keyboard DSL with `{{`.
+    await userEvent.keyboard('{{');
+    await waitFor(() => lastFormula === '`{}`');
+    expect(lastFormula).toBe('`{}`');
+    // Caret should sit between the braces — typing appears inside.
+    await userEvent.type(locator, 'x');
+    await waitFor(() => lastFormula === '`{x}`');
+    expect(lastFormula).toBe('`{x}`');
+  });
+
+  it('typing } before an existing } inside a template steps over it', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue="`{}`"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Caret at end after click; move to between `{` and `}` (position 2).
+    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}');
+    await userEvent.keyboard('}');
+    await new Promise(r => setTimeout(r, 100));
+    expect(lastFormula === '`{}`' || lastFormula === '').toBe(true);
+    expect(el.textContent).toBe('`{}`');
+  });
+
+  it('typing { inside a string literal in a template interpolation does not auto-close', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue="`{''}`"
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Move caret between the two single quotes (position 3).
+    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}{ArrowRight}');
+    await userEvent.keyboard('{{');
+    await waitFor(() => lastFormula === "`{'{'}`");
+    expect(lastFormula).toBe("`{'{'}`");
+  });
+
+  it('typing { outside a template does not auto-close', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('{{');
+    await waitFor(() => lastFormula === '{');
+    expect(lastFormula).toBe('{');
+  });
+
   it('disabled editor is not editable', () => {
     renderInto(
       <FormulaEditor defaultValue="price" disabled columns={COLUMNS} />,
