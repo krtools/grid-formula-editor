@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-04-21
+
 ### Fixed
 
 - Autocomplete dropdown now opens inside a function call when the caret sits between a separator and a closer with whitespace between them — e.g. `IF(something, |)` behaves the same as `IF(something,|)`. Previously the cursor-at-token-start check matched the closing `)` first and fell through to "inside a literal → none", suppressing suggestions. The context classifier now also consults the preceding token when there's a whitespace gap and the preceding token is a separator/operator/`(` — so whitespace before `)` no longer hides the function-arg context.
@@ -123,7 +125,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/krtools/grid-formula-editor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/krtools/grid-formula-editor/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/krtools/grid-formula-editor/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/krtools/grid-formula-editor/compare/v0.3.0...v0.4.0
