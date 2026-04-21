@@ -771,4 +771,89 @@ describe('FormulaEditor browser tests', () => {
     await waitFor(() => handleRef!.getValue() === 'ROUND(1)');
     expect(handleRef!.getValue()).toBe('ROUND(1)');
   });
+
+  describe('Alt+Shift+Arrow AST selection expansion', () => {
+    async function pressExpand() {
+      await userEvent.keyboard('{Alt>}{Shift>}{ArrowRight}{/Shift}{/Alt}');
+    }
+    async function pressShrink() {
+      await userEvent.keyboard('{Alt>}{Shift>}{ArrowLeft}{/Shift}{/Alt}');
+    }
+    function getSelectedText(): string {
+      return window.getSelection()?.toString() ?? '';
+    }
+
+    it('expands caret → token → enclosing expr → whole call, then shrinks back', async () => {
+      renderInto(
+        <FormulaEditor
+          defaultValue="ROUND(price * 2, 0)"
+          columns={COLUMNS}
+          functions={FUNCTIONS}
+        />,
+      );
+      const el = editorEl();
+      const locator = page.elementLocator(el);
+      await locator.click();
+      // Caret lands at the end after a click. Move to offset 8 (inside `price`).
+      await userEvent.keyboard('{Home}');
+      for (let i = 0; i < 8; i++) await userEvent.keyboard('{ArrowRight}');
+
+      await pressExpand();
+      await waitFor(() => getSelectedText() === 'price');
+      expect(getSelectedText()).toBe('price');
+
+      await pressExpand();
+      await waitFor(() => getSelectedText() === 'price * 2');
+      expect(getSelectedText()).toBe('price * 2');
+
+      await pressExpand();
+      await waitFor(() => getSelectedText() === 'ROUND(price * 2, 0)');
+      expect(getSelectedText()).toBe('ROUND(price * 2, 0)');
+
+      // Past the top — same level.
+      await pressExpand();
+      expect(getSelectedText()).toBe('ROUND(price * 2, 0)');
+
+      await pressShrink();
+      await waitFor(() => getSelectedText() === 'price * 2');
+      expect(getSelectedText()).toBe('price * 2');
+
+      await pressShrink();
+      await waitFor(() => getSelectedText() === 'price');
+      expect(getSelectedText()).toBe('price');
+
+      // One more shrink collapses to caret.
+      await pressShrink();
+      await waitFor(() => getSelectedText() === '');
+      expect(getSelectedText()).toBe('');
+    });
+
+    it('a non-expand keypress resets the ladder', async () => {
+      renderInto(
+        <FormulaEditor
+          defaultValue="price + 10"
+          columns={COLUMNS}
+          functions={FUNCTIONS}
+        />,
+      );
+      const el = editorEl();
+      const locator = page.elementLocator(el);
+      await locator.click();
+      await userEvent.keyboard('{Home}');
+      for (let i = 0; i < 2; i++) await userEvent.keyboard('{ArrowRight}');
+
+      await pressExpand();
+      await waitFor(() => getSelectedText() === 'price');
+      expect(getSelectedText()).toBe('price');
+
+      // An unrelated keypress resets. Moving the caret collapses the selection.
+      await userEvent.keyboard('{ArrowRight}');
+      expect(getSelectedText()).toBe('');
+
+      // Next expand rebuilds from the new caret position.
+      await pressExpand();
+      await waitFor(() => getSelectedText().length > 0);
+      expect(getSelectedText().length).toBeGreaterThan(0);
+    });
+  });
 });

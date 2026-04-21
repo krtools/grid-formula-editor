@@ -23,6 +23,7 @@ import {
 import { getCursorContext } from '../autocomplete/cursorContext.js';
 import { getSuggestions } from '../autocomplete/AutocompleteEngine.js';
 import { getCursorOffset, setCursorOffset, getSelectionRange, setSelectionRange } from '../utils/cursor.js';
+import { getExpansionRanges, SelectionRange } from '../utils/expandSelection.js';
 import { UndoStack } from '../utils/undoStack.js';
 import { validateFormula, FormulaValidationError } from '../validation/formulaValidator.js';
 import { buildHighlightedHTML } from './HighlightedContent.js';
@@ -121,6 +122,11 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
     // to tell "click to focus" (do nothing) from "click while already focused"
     // (re-open the dropdown if appropriate).
     const wasFocusedAtMouseDownRef = React.useRef(false);
+    // Alt+Shift+Arrow selection ladder. Built lazily on first expand press from
+    // the caret position; preserved across consecutive expand/shrink presses;
+    // cleared by any other keypress. `level === -1` means "not yet on the ladder"
+    // (caret state), level >= 0 indexes into `ranges`.
+    const expandSelRef = React.useRef<{ ranges: SelectionRange[]; level: number } | null>(null);
 
     const formulaValue = isControlled ? controlledValue : internalValue;
     const mergedColors = React.useMemo(() => mergeColors(colorsProp), [colorsProp]);
@@ -442,6 +448,50 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
       if (disabled || readOnly) return;
+
+      // Alt+Shift+ArrowRight/Left — expand / shrink the selection through the
+      // AST hierarchy. The ladder is built from the caret position on the
+      // first press and preserved across consecutive expand/shrink presses.
+      // Any other keypress falls through to the reset below.
+      if (
+        e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey &&
+        (e.key === 'ArrowRight' || e.key === 'ArrowLeft')
+      ) {
+        e.preventDefault();
+        const el = editorRef.current;
+        if (!el) return;
+        const isExpand = e.key === 'ArrowRight';
+        let state = expandSelRef.current;
+        if (!state) {
+          const { start } = getSelectionRange(el);
+          let ast: ASTNode | null = null;
+          try { ast = parse(formulaValue); } catch { /* tolerate parse errors */ }
+          const ranges = getExpansionRanges(ast, tokens, start);
+          if (ranges.length === 0) return;
+          state = { ranges, level: -1 };
+          expandSelRef.current = state;
+        }
+        const newLevel = isExpand
+          ? Math.min(state.level + 1, state.ranges.length - 1)
+          : Math.max(state.level - 1, -1);
+        if (newLevel === state.level) return;
+        state.level = newLevel;
+        if (newLevel < 0) {
+          const { start } = getSelectionRange(el);
+          setCursorOffset(el, start);
+          expandSelRef.current = null;
+        } else {
+          const r = state.ranges[newLevel];
+          setSelectionRange(el, r.start, r.end);
+        }
+        return;
+      }
+      // Any other key resets the expansion ladder — but skip modifier-only
+      // keydowns (Alt/Shift/Ctrl/Meta pressed on their own), which fire before
+      // the Alt+Shift+Arrow combo completes and would otherwise wipe state.
+      if (e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Control' && e.key !== 'Meta') {
+        expandSelRef.current = null;
+      }
 
       // Classify the keystroke: filter-extending chars (letters, digits, `_`)
       // leave auto-select enabled; anything else (operators, punctuation,

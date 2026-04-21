@@ -22,6 +22,12 @@ export function parse(formula: string): ASTNode {
     return token;
   }
 
+  function setRange<T extends ASTNode>(node: T, start: number, end: number): T {
+    node.start = start;
+    node.end = end;
+    return node;
+  }
+
   // expression → comparison
   function parseExpression(): ASTNode {
     return parseComparison();
@@ -29,6 +35,7 @@ export function parse(formula: string): ASTNode {
 
   // comparison → addition ( comp_op addition )?     (single, non-chaining)
   function parseComparison(): ASTNode {
+    const startTok = tokens[pos];
     let node = parseAddition();
 
     const compOps = [
@@ -41,7 +48,11 @@ export function parse(formula: string): ASTNode {
       const op = current().value;
       pos++;
       const right = parseAddition();
-      node = { type: 'binary', operator: op, left: node, right };
+      node = setRange(
+        { type: 'binary', operator: op, left: node, right },
+        startTok.start,
+        tokens[pos - 1].end,
+      );
     }
 
     return node;
@@ -49,6 +60,7 @@ export function parse(formula: string): ASTNode {
 
   // addition → multiplication ( ("+" | "-" | "&") multiplication )*
   function parseAddition(): ASTNode {
+    const startTok = tokens[pos];
     let node = parseMultiplication();
 
     while (
@@ -59,7 +71,11 @@ export function parse(formula: string): ASTNode {
       const op = current().value;
       pos++;
       const right = parseMultiplication();
-      node = { type: 'binary', operator: op, left: node, right };
+      node = setRange(
+        { type: 'binary', operator: op, left: node, right },
+        startTok.start,
+        tokens[pos - 1].end,
+      );
     }
 
     return node;
@@ -67,6 +83,7 @@ export function parse(formula: string): ASTNode {
 
   // multiplication → power ( ("*" | "/" | "%") power )*
   function parseMultiplication(): ASTNode {
+    const startTok = tokens[pos];
     let node = parsePower();
 
     while (
@@ -77,7 +94,11 @@ export function parse(formula: string): ASTNode {
       const op = current().value;
       pos++;
       const right = parsePower();
-      node = { type: 'binary', operator: op, left: node, right };
+      node = setRange(
+        { type: 'binary', operator: op, left: node, right },
+        startTok.start,
+        tokens[pos - 1].end,
+      );
     }
 
     return node;
@@ -85,12 +106,17 @@ export function parse(formula: string): ASTNode {
 
   // power → unary ( "^" power )?     (right-associative)
   function parsePower(): ASTNode {
+    const startTok = tokens[pos];
     const node = parseUnary();
 
     if (current().type === TokenType.CARET) {
       pos++;
       const right = parsePower();
-      return { type: 'binary', operator: '^', left: node, right };
+      return setRange(
+        { type: 'binary', operator: '^', left: node, right },
+        startTok.start,
+        tokens[pos - 1].end,
+      );
     }
 
     return node;
@@ -99,9 +125,14 @@ export function parse(formula: string): ASTNode {
   // unary → "-" unary | primary
   function parseUnary(): ASTNode {
     if (current().type === TokenType.MINUS) {
+      const startTok = current();
       pos++;
       const operand = parseUnary();
-      return { type: 'unary', operator: '-', operand };
+      return setRange(
+        { type: 'unary', operator: '-', operand },
+        startTok.start,
+        tokens[pos - 1].end,
+      );
     }
     return parsePrimary();
   }
@@ -113,19 +144,19 @@ export function parse(formula: string): ASTNode {
     switch (token.type) {
       case TokenType.NUMBER:
         pos++;
-        return { type: 'number', value: Number(token.value) };
+        return setRange({ type: 'number', value: Number(token.value) }, token.start, token.end);
 
       case TokenType.STRING:
         pos++;
-        return { type: 'string', value: token.value };
+        return setRange({ type: 'string', value: token.value }, token.start, token.end);
 
       case TokenType.BOOLEAN:
         pos++;
-        return { type: 'boolean', value: token.value === 'TRUE' };
+        return setRange({ type: 'boolean', value: token.value === 'TRUE' }, token.start, token.end);
 
       case TokenType.BRACKET_IDENTIFIER:
         pos++;
-        return { type: 'column', name: token.value };
+        return setRange({ type: 'column', name: token.value }, token.start, token.end);
 
       case TokenType.IDENTIFIER: {
         // Lookahead: function call if followed by "("
@@ -133,7 +164,7 @@ export function parse(formula: string): ASTNode {
           return parseFunctionCall();
         }
         pos++;
-        return { type: 'column', name: token.value };
+        return setRange({ type: 'column', name: token.value }, token.start, token.end);
       }
 
       case TokenType.LPAREN: {
@@ -144,6 +175,7 @@ export function parse(formula: string): ASTNode {
       }
 
       case TokenType.TEMPLATE_START: {
+        const startTok = token;
         pos++;
         const parts: string[] = [];
         const expressions: ASTNode[] = [];
@@ -170,11 +202,12 @@ export function parse(formula: string): ASTNode {
         }
         parts.push(textBuffer);
         pos++; // consume TEMPLATE_END
+        const endTok = tokens[pos - 1];
 
         if (expressions.length === 0) {
-          return { type: 'string', value: parts[0] };
+          return setRange({ type: 'string', value: parts[0] }, startTok.start, endTok.end);
         }
-        return { type: 'template', parts, expressions };
+        return setRange({ type: 'template', parts, expressions }, startTok.start, endTok.end);
       }
 
       default:
@@ -188,6 +221,7 @@ export function parse(formula: string): ASTNode {
 
   // functionCall → IDENT "(" ( expression ( "," expression )* )? ")"
   function parseFunctionCall(): ASTNode {
+    const startTok = current();
     const name = eat(TokenType.IDENTIFIER).value;
     eat(TokenType.LPAREN);
 
@@ -201,7 +235,11 @@ export function parse(formula: string): ASTNode {
     }
 
     eat(TokenType.RPAREN);
-    return { type: 'function', name: name.toUpperCase(), args };
+    return setRange(
+      { type: 'function', name: name.toUpperCase(), args },
+      startTok.start,
+      tokens[pos - 1].end,
+    );
   }
 
   const result = parseExpression();

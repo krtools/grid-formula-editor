@@ -68,19 +68,30 @@ export type ASTNode =
   | FunctionCall
   | TemplateLiteral;
 
+/**
+ * Source offsets on AST nodes are populated by the parser. They may be absent
+ * when a node is constructed programmatically (e.g. by the
+ * `requireTemplateVars` compile-time rewrite in `compiler.ts`).
+ */
 export interface NumberLiteral {
   type: 'number';
   value: number;
+  start?: number;
+  end?: number;
 }
 
 export interface StringLiteral {
   type: 'string';
   value: string;
+  start?: number;
+  end?: number;
 }
 
 export interface BooleanLiteral {
   type: 'boolean';
   value: boolean;
+  start?: number;
+  end?: number;
 }
 
 /** Reference to a column by name (bare or bracketed in source). */
@@ -88,6 +99,8 @@ export interface ColumnRef {
   type: 'column';
   /** Column name as it will be looked up via `CompileOptions.get`. */
   name: string;
+  start?: number;
+  end?: number;
 }
 
 export interface UnaryExpr {
@@ -96,6 +109,8 @@ export interface UnaryExpr {
   operator: string;
   /** The operand expression. */
   operand: ASTNode;
+  start?: number;
+  end?: number;
 }
 
 export interface BinaryExpr {
@@ -104,6 +119,8 @@ export interface BinaryExpr {
   operator: string;
   left: ASTNode;
   right: ASTNode;
+  start?: number;
+  end?: number;
 }
 
 export interface FunctionCall {
@@ -112,6 +129,8 @@ export interface FunctionCall {
   name: string;
   /** Evaluated positional arguments. */
   args: ASTNode[];
+  start?: number;
+  end?: number;
 }
 
 /**
@@ -124,6 +143,8 @@ export interface TemplateLiteral {
   type: 'template';
   parts: string[];
   expressions: ASTNode[];
+  start?: number;
+  end?: number;
 }
 
 // ============ Errors ============

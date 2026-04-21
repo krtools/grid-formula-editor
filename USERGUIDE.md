@@ -215,6 +215,9 @@ and the cell is left empty (or gets a fallback if the app configured one).
   functions or unknown column names.
 - **Click into the editor** when it's already focused to re-open the
   autocomplete dropdown at the caret position.
+- **Alt+Shift+→ / ←** grows and shrinks the selection along the formula's
+  structure — handy for selecting a whole argument, a whole function call,
+  or the surrounding template. Any other keypress resets the ladder.
 
 ## Common patterns
 
