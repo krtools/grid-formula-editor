@@ -136,6 +136,7 @@ Names are case-insensitive. Call like Excel: `ROUND(x, 2)`.
 ### Control-flow (not in Excel)
 - `BAIL()` — forces the **whole formula** to render blank. Uncatchable by `IFERROR`.
 - `REQUIRE(value)` — returns `value` if present, otherwise bails the whole formula.
+- `OPTIONAL(value)` — identity. Used as a marker at the top of a template interpolation to opt out of `requireTemplateVars` (see below); elsewhere it's a no-op.
 - `SELF()` — the current column's pre-formula input value.
 
 #### When to use BAIL / REQUIRE
@@ -160,6 +161,30 @@ IF(status = "archived", BAIL(), amount * rate)
 The difference from `IFERROR`: `IFERROR` catches exceptions; `BAIL` / `REQUIRE`
 signal "this formula has no meaningful result, render blank" and cannot be
 swallowed by an enclosing `IFERROR`.
+
+#### Require every template variable by default
+
+If most of your templates want the strict `REQUIRE`-everywhere behavior, pass
+`requireTemplateVars: true` to `compile()`. Every template interpolation is
+then treated as if wrapped in `REQUIRE` — a blank value anywhere in a
+template bails the whole formula.
+
+```
+-- With requireTemplateVars: true, these two are equivalent:
+`users/{userId}/posts/{postId}`
+`users/{REQUIRE(userId)}/posts/{REQUIRE(postId)}`
+```
+
+To let a single interp render blank-as-empty (the legacy default), wrap it
+in `OPTIONAL`:
+
+```
+-- Strict mode is on, but middleName is allowed to be missing:
+`{firstName} {OPTIONAL(middleName)} {lastName}`
+```
+
+Explicit `REQUIRE(x)` or `BAIL()` at the top of an interp are left alone —
+the option only affects interps that aren't already bail-aware.
 
 ## Type coercion
 

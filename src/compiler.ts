@@ -21,8 +21,40 @@ interface CompiledColumn {
   refs: string[];
 }
 
+// Walks the AST in place and wraps every template interpolation expression
+// in a synthetic REQUIRE(...) call, except when the top-level is already a
+// bail-aware form (REQUIRE, OPTIONAL, BAIL) — those either do the right
+// thing already or opt out explicitly. Used only when the compile option
+// `requireTemplateVars` is true.
+function wrapTemplateInterpolations(node: ASTNode): void {
+  switch (node.type) {
+    case 'template':
+      for (let i = 0; i < node.expressions.length; i++) {
+        const expr = node.expressions[i];
+        const skip =
+          expr.type === 'function' &&
+          (expr.name === 'REQUIRE' || expr.name === 'OPTIONAL' || expr.name === 'BAIL');
+        if (!skip) {
+          node.expressions[i] = { type: 'function', name: 'REQUIRE', args: [expr] };
+        }
+        wrapTemplateInterpolations(node.expressions[i]);
+      }
+      return;
+    case 'binary':
+      wrapTemplateInterpolations(node.left);
+      wrapTemplateInterpolations(node.right);
+      return;
+    case 'unary':
+      wrapTemplateInterpolations(node.operand);
+      return;
+    case 'function':
+      for (const arg of node.args) wrapTemplateInterpolations(arg);
+      return;
+  }
+}
+
 export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
-  const { columns, get, set, onError, functions: customFunctions } = options;
+  const { columns, get, set, onError, functions: customFunctions, requireTemplateVars } = options;
 
   // ---- Build function registry ----
 
@@ -44,6 +76,7 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
   for (const col of columns) {
     try {
       const ast = parse(col.formula);
+      if (requireTemplateVars) wrapTemplateInterpolations(ast);
       const refs = extractColumnRefs(ast);
       compiled.set(col.name, { name: col.name, formula: col.formula, ast, refs });
     } catch (cause) {

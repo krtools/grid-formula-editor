@@ -17,6 +17,9 @@ const SAMPLE_ROWS = [
   { price: 149.0, quantity: 1, taxRate: 0.1, name: 'Gizmo', category: 'Electronics' },
   { price: 4.5,   quantity: 50, taxRate: 0.05, name: 'Bolt Pack', category: 'Hardware' },
   { price: 74.99, quantity: 2, taxRate: 0.08, name: 'Sensor Kit', category: 'Electronics' },
+  // Intentionally blank `category` so the `requireTemplateVars` toggle has a
+  // visible effect on the template preset — off: "Mystery ()"; on: — (null).
+  { price: 3.0,   quantity: 1, taxRate: 0, name: 'Mystery', category: '' },
 ];
 
 const COLUMNS: ColumnDef[] = [
@@ -33,6 +36,7 @@ const PRESET_FORMULAS = [
   { label: 'Discount (10+ items)', formula: 'IF(quantity >= 10, ROUND(price * quantity * 0.1, 2), 0)' },
   { label: 'Label', formula: 'CONCAT(name, " (", category, ")")' },
   { label: 'Per-unit after tax', formula: 'ROUND(price * (1 + taxRate), 2)' },
+  { label: 'Template (toggle Require)', formula: '`{name} ({category})`' },
 ];
 
 // ── Styles (all inline) ─────────────────────────────────────────────
@@ -189,6 +193,7 @@ export function App() {
   const [info, setInfo] = React.useState<FormulaChangeInfo | null>(null);
   const [results, setResults] = React.useState<unknown[]>([]);
   const [isDark, setIsDark] = React.useState(false);
+  const [requireTemplateVars, setRequireTemplateVars] = React.useState(false);
 
   // Evaluate formula against sample rows
   React.useEffect(() => {
@@ -205,6 +210,7 @@ export function App() {
           row[col] = value;
         },
         onError: () => undefined,
+        requireTemplateVars,
       });
 
       const computed = SAMPLE_ROWS.map(row => {
@@ -216,7 +222,7 @@ export function App() {
     } catch {
       setResults(SAMPLE_ROWS.map(() => null));
     }
-  }, [formula, info]);
+  }, [formula, info, requireTemplateVars]);
 
   function handleChange(f: string, changeInfo: FormulaChangeInfo) {
     setFormula(f);
@@ -265,6 +271,22 @@ export function App() {
       <div style={toggleRowStyle}>
         <button style={toggleBtnStyle(!isDark)} onClick={() => setIsDark(false)}>Light</button>
         <button style={toggleBtnStyle(isDark)} onClick={() => setIsDark(true)}>Dark</button>
+        <label style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          marginLeft: 12,
+          fontSize: 13,
+          cursor: 'pointer',
+          color: isDark ? '#c9d1d9' : '#1f2328',
+        }}>
+          <input
+            type="checkbox"
+            checked={requireTemplateVars}
+            onChange={e => setRequireTemplateVars(e.target.checked)}
+          />
+          <code style={{ fontSize: 12 }}>requireTemplateVars</code>
+        </label>
       </div>
 
       <div style={sectionStyle}>

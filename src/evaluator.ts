@@ -84,6 +84,14 @@ function evaluateFunction(name: string, args: ASTNode[], ctx: EvalContext): unkn
       return v;
     }
 
+    // Pure identity. Used as the template-interp escape hatch: when the
+    // `requireTemplateVars` compile option is on, interps are auto-wrapped
+    // in REQUIRE — an `OPTIONAL(x)` at the top of an interp tells the
+    // compiler to skip that wrap so blanks pass through to lenient render.
+    case 'OPTIONAL': {
+      return evaluate(args[0], ctx);
+    }
+
     case 'SELF': {
       return ctx.getColumn(ctx.currentColumn);
     }

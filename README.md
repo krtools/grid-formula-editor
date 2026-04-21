@@ -329,6 +329,7 @@ If coercion fails (e.g. `Number("abc")` is `NaN`), the engine raises a
 | `set`       | `(row: T, columnName: string, value: unknown, referencedColumns: string[]) => void` | Called once per formula column after successful evaluation. `referencedColumns` lists every column the formula reads. |
 | `onError`   | `(error: FormulaError, row?: T) => unknown` | *(Optional)* Error handler. Return a value to use it as the cell result; return `undefined` to skip the column. `row` is `undefined` for compile-time errors. |
 | `functions` | `Record<string, Function>` | *(Optional)* Custom functions to register (case-insensitive). |
+| `requireTemplateVars` | `boolean` | *(Optional, default `false`)* When `true`, every template interpolation is treated as if wrapped in `REQUIRE()` — a blank value anywhere in a template bails the whole formula. Wrap a single interp in `OPTIONAL(x)` to opt out. |
 
 ### `CompiledProcessor<T>`
 

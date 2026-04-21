@@ -452,6 +452,140 @@ describe('REQUIRE', () => {
 });
 
 // ============================================================
+// requireTemplateVars compile option
+// ============================================================
+
+describe('requireTemplateVars option', () => {
+  function makeStrictProcessor(formulas: Record<string, string>) {
+    const columns = Object.entries(formulas).map(([name, formula]) => ({ name, formula }));
+    return compile<Row>({
+      columns,
+      get: (row, col) => {
+        if (!(col in row)) throw new Error(`Column "${col}" not found`);
+        return row[col];
+      },
+      set: (row, col, value) => {
+        row[col] = value;
+      },
+      requireTemplateVars: true,
+    });
+  }
+
+  it('default (option off) leaves blank interpolations as empty string', () => {
+    const proc = makeProcessor({ greeting: '`Hello {name}!`' });
+    const row: Row = { name: null };
+    proc.process(row);
+    expect(row.greeting).toBe('Hello !');
+  });
+
+  it('bails the formula when any interp is blank', () => {
+    const proc = makeStrictProcessor({ url: '`users/{userId}/posts/{postId}`' });
+    const row: Row = { userId: 'u1', postId: '' };
+    proc.process(row);
+    expect(row.url).toBeNull();
+  });
+
+  it('renders fully when all interps are present', () => {
+    const proc = makeStrictProcessor({ url: '`users/{userId}/posts/{postId}`' });
+    const row: Row = { userId: 'u1', postId: 'p42' };
+    proc.process(row);
+    expect(row.url).toBe('users/u1/posts/p42');
+  });
+
+  it('OPTIONAL at the interp top level opts out of bail', () => {
+    const proc = makeStrictProcessor({ line: '`{firstName} {OPTIONAL(middleName)} {lastName}`' });
+    const row: Row = { firstName: 'Ada', middleName: null, lastName: 'Lovelace' };
+    proc.process(row);
+    expect(row.line).toBe('Ada  Lovelace');
+  });
+
+  it('explicit REQUIRE in an interp behaves the same as the auto-wrap', () => {
+    const proc = makeStrictProcessor({ url: '`users/{REQUIRE(userId)}`' });
+    const rowBlank: Row = { userId: '' };
+    proc.process(rowBlank);
+    expect(rowBlank.url).toBeNull();
+
+    const rowOk: Row = { userId: 'u1' };
+    proc.process(rowOk);
+    expect(rowOk.url).toBe('users/u1');
+  });
+
+  it('IFERROR cannot catch the implicit require bail', () => {
+    const proc = makeStrictProcessor({ url: '`users/{IFERROR(userId, "anon")}`' });
+    // IFERROR evaluates userId successfully (no throw) so it returns "".
+    // The auto-wrap then sees "" and bails — require-by-default is
+    // uncatchable just like explicit REQUIRE.
+    const row: Row = { userId: '' };
+    proc.process(row);
+    expect(row.url).toBeNull();
+  });
+
+  it('wraps interps in nested templates', () => {
+    const proc = makeStrictProcessor({ wrap: '`outer {`inner {x}`}`' });
+    const rowBlank: Row = { x: '' };
+    proc.process(rowBlank);
+    expect(rowBlank.wrap).toBeNull();
+
+    const rowOk: Row = { x: 'v' };
+    proc.process(rowOk);
+    expect(rowOk.wrap).toBe('outer inner v');
+  });
+
+  it('BAIL() at the top of an interp is left alone', () => {
+    const proc = makeStrictProcessor({ msg: '`before {BAIL()} after`' });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.msg).toBeNull();
+  });
+
+  it('non-template formulas are unaffected', () => {
+    const proc = makeStrictProcessor({ total: 'price * quantity' });
+    const row: Row = { price: 4, quantity: 5 };
+    proc.process(row);
+    expect(row.total).toBe(20);
+  });
+
+  it('dependency tracking still picks up refs wrapped in auto-REQUIRE', () => {
+    // taxed depends on price; auto-wrapping shouldn't drop that edge, so
+    // taxed's evaluation must see the already-computed `price`.
+    const proc = makeStrictProcessor({
+      price: 'price * 1.1',
+      taxed: '`price is {price}`',
+    });
+    const row: Row = { price: 10 };
+    proc.process(row);
+    expect(row.taxed).toBe('price is 11');
+  });
+});
+
+// ============================================================
+// OPTIONAL
+// ============================================================
+
+describe('OPTIONAL', () => {
+  it('returns its argument unchanged when present', () => {
+    const proc = makeProcessor({ result: 'OPTIONAL(name)' });
+    const row: Row = { name: 'Ada' };
+    proc.process(row);
+    expect(row.result).toBe('Ada');
+  });
+
+  it('passes blank values through as-is (no bail, no coercion)', () => {
+    const proc = makeProcessor({ result: 'OPTIONAL(name)' });
+    const row: Row = { name: null };
+    proc.process(row);
+    expect(row.result).toBeNull();
+  });
+
+  it('in a template interp, blanks render as empty string (template toString handles it)', () => {
+    const proc = makeProcessor({ greeting: '`Hi {OPTIONAL(name)}!`' });
+    const row: Row = { name: null };
+    proc.process(row);
+    expect(row.greeting).toBe('Hi !');
+  });
+});
+
+// ============================================================
 // SELF and self-references
 // ============================================================
 

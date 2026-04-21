@@ -239,6 +239,10 @@ export const BUILTIN_FUNCTIONS: FunctionDef[] = [
     parameters: [{ name: 'value', type: 'any', description: 'Value that must be non-blank' }],
   },
   {
+    name: 'OPTIONAL', description: 'Identity; marks a template interpolation as allowed-to-be-blank under requireTemplateVars', signature: 'OPTIONAL(value)',
+    parameters: [{ name: 'value', type: 'any', description: 'Value that may be blank' }],
+  },
+  {
     name: 'SELF', description: "This column's pre-formula input value (alias for referencing the column by its own name)", signature: 'SELF()',
     parameters: [],
   },

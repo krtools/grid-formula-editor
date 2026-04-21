@@ -247,6 +247,15 @@ export interface CompileOptions<T> {
    * built-in override it.
    */
   functions?: Record<string, CompiledFormulaFunction<T>>;
+  /**
+   * When `true`, every template interpolation is treated as if wrapped in
+   * `REQUIRE()` — a blank value (null, undefined, or "") in any interp bails
+   * the whole formula to `null`. Wrap a single interp in `OPTIONAL(x)` to
+   * opt back into the lenient rendering (blank → "") for that one interp.
+   * Explicit `REQUIRE(x)` / `BAIL()` at the top of an interp are left alone.
+   * Defaults to `false` (legacy behavior: blanks render as "").
+   */
+  requireTemplateVars?: boolean;
 }
 
 export interface CompiledProcessor<T> {

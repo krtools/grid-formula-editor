@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `requireTemplateVars` compile option. When `true`, every template interpolation is treated as if wrapped in `REQUIRE()` — a blank value (null, undefined, "") anywhere in a template bails the whole formula to `null`. Default `false`, so existing formulas are unaffected. Implemented as a compile-time AST rewrite so there's no per-eval overhead and the existing REQUIRE semantics (including IFERROR-immunity) apply unchanged.
+- `OPTIONAL(x)` builtin. Identity function used as a marker at the top of a template interpolation to opt out of `requireTemplateVars` for that one interp — e.g. `` `{firstName} {OPTIONAL(middleName)} {lastName}` `` renders `middleName` as blank instead of bailing. Outside that role it's a no-op. Explicit `REQUIRE(x)` and `BAIL()` at the top of an interp are similarly left alone by the auto-wrap.
+
 ## [0.5.0] - 2026-04-21
 
 ### Added
