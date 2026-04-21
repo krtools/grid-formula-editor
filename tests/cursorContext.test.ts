@@ -126,4 +126,31 @@ describe('getCursorContext', () => {
       expect(ctx.argIndex).toBe(1);
     }
   });
+
+  it('returns function-arg when cursor sits between ", " and ")" — whitespace before RPAREN', () => {
+    // `IF(something, |)` — caret at offset 14 is at RPAREN.start but preceded
+    // by a whitespace gap after the comma. Should behave the same as `IF(something,|)`.
+    const ctx = getCursorContext('IF(something, )', 14);
+    expect(ctx.type).toBe('function-arg');
+    if (ctx.type === 'function-arg') {
+      expect(ctx.functionName).toBe('IF');
+      expect(ctx.argIndex).toBe(1);
+    }
+  });
+
+  it('returns function-arg when cursor sits between "(" and ")" — whitespace after LPAREN', () => {
+    // `IF( |)` — caret inside empty-ish first arg slot with whitespace gap.
+    const ctx = getCursorContext('IF( )', 4);
+    expect(ctx.type).toBe('function-arg');
+    if (ctx.type === 'function-arg') {
+      expect(ctx.functionName).toBe('IF');
+      expect(ctx.argIndex).toBe(0);
+    }
+  });
+
+  it('returns expression-start when cursor sits after operator before RPAREN with whitespace', () => {
+    // `(a + )` with caret at offset 5 — preceded by `+` with a space gap.
+    const ctx = getCursorContext('(a + )', 5);
+    expect(ctx.type).toBe('expression-start');
+  });
 });

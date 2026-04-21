@@ -31,25 +31,25 @@ export function getCursorContext(formula: string, cursorOffset: number): CursorC
     }
   }
 
+  // When the cursor sits at the start of a token with a whitespace gap to
+  // the preceding token, classify based on the preceding token if it's a
+  // separator — so `IF(x, |)` gives the same function-arg context as
+  // `IF(x,|)`. Fall through when the preceding token doesn't yield a
+  // meaningful context (e.g. `a |+ b` — prev is an identifier).
+  if (currentToken && cursorOffset === currentToken.start) {
+    const idx = tokensNoEOF.indexOf(currentToken);
+    const prev = idx > 0 ? tokensNoEOF[idx - 1] : null;
+    if (prev && prev.end < currentToken.start) {
+      const afterPrev = classifyAfterSeparator(prev, tokensNoEOF);
+      if (afterPrev) return afterPrev;
+    }
+  }
+
   // If cursor is past all tokens (e.g. in trailing whitespace), use the last token for context
   if (!currentToken && cursorOffset >= tokensNoEOF[tokensNoEOF.length - 1].end) {
     const last = tokensNoEOF[tokensNoEOF.length - 1];
-    // After COMMA or LPAREN — check for function-arg context
-    if (last.type === TokenType.COMMA || last.type === TokenType.LPAREN) {
-      const fnInfo = findEnclosingFunction(tokensNoEOF, last);
-      if (fnInfo) {
-        return { type: 'function-arg', functionName: fnInfo.name, argIndex: fnInfo.argIndex };
-      }
-      return { type: 'expression-start' };
-    }
-    // After `{` opening a template interpolation — expression start
-    if (last.type === TokenType.TEMPLATE_INTERP_START) {
-      return { type: 'expression-start' };
-    }
-    // After any other operator/separator — expression start
-    if (isOperatorOrSeparator(last.type)) {
-      return { type: 'expression-start' };
-    }
+    const afterLast = classifyAfterSeparator(last, tokensNoEOF);
+    if (afterLast) return afterLast;
     // Otherwise no autocomplete (cursor after a completed identifier/literal)
     return { type: 'none' };
   }
@@ -132,6 +132,29 @@ function isOperatorOrSeparator(type: TokenType): boolean {
     type === TokenType.COMMA ||
     type === TokenType.LPAREN
   );
+}
+
+/**
+ * Classify the context when the cursor sits after a given "preceding" token
+ * (separated by whitespace). Returns null if the preceding token isn't a
+ * separator/operator that yields a meaningful context on its own — in which
+ * case callers should fall through to their normal classification.
+ */
+function classifyAfterSeparator(prev: Token, tokens: Token[]): CursorContext | null {
+  if (prev.type === TokenType.COMMA || prev.type === TokenType.LPAREN) {
+    const fnInfo = findEnclosingFunction(tokens, prev);
+    if (fnInfo) {
+      return { type: 'function-arg', functionName: fnInfo.name, argIndex: fnInfo.argIndex };
+    }
+    return { type: 'expression-start' };
+  }
+  if (prev.type === TokenType.TEMPLATE_INTERP_START) {
+    return { type: 'expression-start' };
+  }
+  if (isOperatorOrSeparator(prev.type)) {
+    return { type: 'expression-start' };
+  }
+  return null;
 }
 
 function findNextNonWhitespace(tokens: Token[], after: Token): Token | null {
