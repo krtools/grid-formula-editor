@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-21
+
 ### Added
 
 - `requireTemplateVars` compile option. When `true`, every template interpolation is treated as if wrapped in `REQUIRE()` — a blank value (null, undefined, "") anywhere in a template bails the whole formula to `null`. Default `false`, so existing formulas are unaffected. Implemented as a compile-time AST rewrite so there's no per-eval overhead and the existing REQUIRE semantics (including IFERROR-immunity) apply unchanged.
@@ -117,7 +119,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/krtools/grid-formula-editor/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/krtools/grid-formula-editor/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/krtools/grid-formula-editor/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/krtools/grid-formula-editor/compare/v0.2.2...v0.3.0
