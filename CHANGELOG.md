@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Quote auto-pair no longer doubles up when the caret is inside a string literal. Typing `'` inside `"..."`, `"` inside `'...'`, or either inside a backtick template's text now inserts a single literal character. The step-past-the-closer shortcut is now gated to the string's own delimiter at its closer position — previously a stray quote char that happened to sit at the caret (e.g. `'` in the middle of a double-quoted string) could trigger step-past when typed. Outside strings, the original pair-and-caret-between behavior is unchanged.
+
 ## [0.6.1] - 2026-04-21
 
 ### Fixed

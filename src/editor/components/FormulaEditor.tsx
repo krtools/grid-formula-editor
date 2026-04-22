@@ -24,6 +24,7 @@ import { getCursorContext } from '../autocomplete/cursorContext.js';
 import { getSuggestions } from '../autocomplete/AutocompleteEngine.js';
 import { getCursorOffset, setCursorOffset, getSelectionRange, setSelectionRange } from '../utils/cursor.js';
 import { getExpansionRanges, SelectionRange } from '../utils/expandSelection.js';
+import { getStringContext } from '../utils/stringContext.js';
 import { UndoStack } from '../utils/undoStack.js';
 import { validateFormula, FormulaValidationError } from '../validation/formulaValidator.js';
 import { buildHighlightedHTML } from './HighlightedContent.js';
@@ -501,17 +502,43 @@ export const FormulaEditor = React.forwardRef<FormulaEditorHandle, FormulaEditor
         suppressAutoSelectRef.current = !/[a-zA-Z0-9_]/.test(e.key);
       }
 
-      // Auto-close string delimiters (`, ", ') when typed with no selection:
-      // the delimiter is paired and the caret is placed between. If the caret
-      // already sits before a matching closer, step past it instead of
-      // stacking a new pair — so typing the natural closer at the end of a
-      // string produces `abc` / "abc" / 'abc' rather than doubled delimiters.
+      // Auto-close string delimiters (`, ", ') when typed with no selection.
+      // Outside a string: pair the delimiter with the caret between. If the
+      // caret already sits before the same char, step past it — so typing
+      // the natural closer at the end of a string produces `abc` / "abc"
+      // rather than doubled delimiters.
+      // Inside a string: don't pair. Typing a *different* quote (e.g. `'`
+      // inside `"..."`) inserts a single literal char. Typing the string's
+      // own delimiter at its closer position steps past; elsewhere inside
+      // the string (including where a stray quote char happens to sit), it
+      // inserts a single literal char — never step past a random char.
       if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '`' || e.key === '"' || e.key === "'")) {
         const el = editorRef.current;
         if (el) {
           const { start, end } = getSelectionRange(el);
           if (start === end) {
             const ch = e.key;
+            const strCtx = getStringContext(formulaValue, start);
+            if (strCtx) {
+              if (ch === strCtx.delimiter && start === strCtx.closerPos) {
+                e.preventDefault();
+                pendingCursorRef.current = start + 1;
+                processFormula(formulaValue, start + 1);
+                return;
+              }
+              e.preventDefault();
+              const newFormula = formulaValue.slice(0, start) + ch + formulaValue.slice(end);
+              const newCursor = start + 1;
+              if (typingGroupTimerRef.current) {
+                clearTimeout(typingGroupTimerRef.current);
+                typingGroupTimerRef.current = null;
+              }
+              undoStackRef.current.push({ value: newFormula, cursorPos: newCursor });
+              pendingCursorRef.current = newCursor;
+              if (!isControlled) setInternalValue(newFormula);
+              processFormula(newFormula, newCursor);
+              return;
+            }
             if (formulaValue.charAt(start) === ch) {
               e.preventDefault();
               pendingCursorRef.current = start + 1;

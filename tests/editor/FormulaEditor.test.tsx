@@ -501,6 +501,145 @@ describe('FormulaEditor browser tests', () => {
     expect(lastFormula).toBe("`{'{'}`");
   });
 
+  it('typing \' inside a double-quoted string does not double up', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue={'"abc"'}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Move caret between `c` and the closing `"` (position 4).
+    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+    await userEvent.keyboard("'");
+    await waitFor(() => lastFormula === `"abc'"`);
+    expect(lastFormula).toBe(`"abc'"`);
+  });
+
+  it('typing " inside a single-quoted string does not double up', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue={"'abc'"}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+    await userEvent.keyboard('"');
+    await waitFor(() => lastFormula === `'abc"'`);
+    expect(lastFormula).toBe(`'abc"'`);
+  });
+
+  it('typing \' inside backtick template text does not double up', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue={'`hello`'}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Caret between `o` and closing backtick (position 6).
+    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+    await userEvent.keyboard("'");
+    await waitFor(() => lastFormula === "`hello'`");
+    expect(lastFormula).toBe("`hello'`");
+  });
+
+  it('typing " inside backtick template text does not double up', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue={'`hello`'}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+    await userEvent.keyboard('"');
+    await waitFor(() => lastFormula === '`hello"`');
+    expect(lastFormula).toBe('`hello"`');
+  });
+
+  it('typing the matching closing quote inside a string steps past it', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue={'"abc"'}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Caret right before the closing `"` (position 4).
+    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+    await userEvent.keyboard('"');
+    // Formula unchanged, caret stepped past.
+    await new Promise(r => setTimeout(r, 100));
+    expect(lastFormula === '"abc"' || lastFormula === '').toBe(true);
+    expect(el.textContent).toBe('"abc"');
+  });
+
+  it('typing a quote does NOT step past a coincidentally-matching stray quote inside a string', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        defaultValue={`"ab'cd"`}
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    // Move caret to position 3 — right before the `'` in `"ab'cd"`.
+    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}{ArrowRight}');
+    await userEvent.keyboard("'");
+    // Should insert a literal `'`, not step past the existing one — so now
+    // the string contains two adjacent single quotes.
+    await waitFor(() => lastFormula === `"ab''cd"`);
+    expect(lastFormula).toBe(`"ab''cd"`);
+  });
+
+  it('typing " outside any string still pairs (baseline sanity)', async () => {
+    let lastFormula = '';
+    renderInto(
+      <FormulaEditor
+        columns={COLUMNS}
+        functions={FUNCTIONS}
+        onChange={f => { lastFormula = f; }}
+      />,
+    );
+    const el = editorEl();
+    const locator = page.elementLocator(el);
+    await locator.click();
+    await userEvent.keyboard('"');
+    await waitFor(() => lastFormula === '""');
+    expect(lastFormula).toBe('""');
+  });
+
   it('typing { outside a template does not auto-close', async () => {
     let lastFormula = '';
     renderInto(
