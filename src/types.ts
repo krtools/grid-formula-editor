@@ -149,14 +149,16 @@ export interface TemplateLiteral {
 
 // ============ Errors ============
 
-/** Classifies formula errors surfaced via `CompileOptions.onError`. */
+/** Classifies formula errors surfaced via `CompileOptions.onCompileError` / `onRuntimeError`. */
 export type FormulaErrorCode =
   | 'CIRCULAR_REFERENCE'
   | 'PARSE_ERROR'
   | 'REFERENCE_ERROR'
   | 'TYPE_ERROR'
   | 'EVAL_ERROR'
-  | 'FUNCTION_ERROR';
+  | 'FUNCTION_ERROR'
+  /** Emitted at runtime when a column's evaluation reads a dependency that errored on the same row. */
+  | 'DEPENDENCY_ERROR';
 
 /**
  * Severity of a `FormulaError`.
@@ -256,11 +258,37 @@ export interface CompileOptions<T> {
    */
   set: (row: T, columnName: string, value: unknown, referencedColumns: string[]) => void;
   /**
-   * Called when a formula fails to compile or evaluate. Optional return value
-   * is used as the column's value when recoverable (non-fatal) errors occur.
-   * When omitted, fatal errors throw and runtime errors produce no value.
+   * Called once per compile-time error (`PARSE_ERROR`, `CIRCULAR_REFERENCE`).
+   * Takes precedence over `onError` for compile errors. Return value is
+   * ignored — there is no row in scope at compile time. When neither this
+   * nor `onError` is supplied and `tolerateCompileErrors` is `false`,
+   * `compile()` throws on the first compile error.
+   */
+  onCompileError?: (error: FormulaError) => void;
+  /**
+   * Called per (row, column) when a runtime error occurs. Takes precedence
+   * over `onError` for runtime errors. Optional return value is used as the
+   * column's value (and cached for downstream formulas); returning `undefined`
+   * leaves the column unset and marks it errored on the row, causing
+   * dependents to cascade with a `DEPENDENCY_ERROR`. Also called for the
+   * per-row replay of compile errors when `tolerateCompileErrors` is `true`.
+   */
+  onRuntimeError?: (error: FormulaError, row: T) => unknown;
+  /**
+   * @deprecated Use `onCompileError` and `onRuntimeError` instead. Kept as a
+   * unified fallback when those aren't supplied — fires for both compile-time
+   * and runtime errors. Optional return value is used as the column's value
+   * when recoverable (non-fatal) errors occur.
    */
   onError?: (error: FormulaError, row?: T) => unknown;
+  /**
+   * When `true`, `compile()` does not throw on `PARSE_ERROR` or
+   * `CIRCULAR_REFERENCE`. Affected columns are excluded from the topological
+   * eval order, but `process(row)` emits a per-row error for each via
+   * `onRuntimeError` (or `onError`) so callers can surface the issue at the
+   * cell level. Defaults to `false`.
+   */
+  tolerateCompileErrors?: boolean;
   /**
    * User-registered functions, callable from formulas by name (case-insensitive).
    * Each function receives a `FunctionContext` as its first argument, followed
@@ -282,4 +310,12 @@ export interface CompileOptions<T> {
 export interface CompiledProcessor<T> {
   /** Evaluates every compiled formula column and writes results back via `set`. */
   process(row: T): void;
+  /**
+   * Errors detected at compile time (`PARSE_ERROR`, `CIRCULAR_REFERENCE`).
+   * Always populated regardless of mode. In non-tolerant mode the affected
+   * columns are silently excluded from `process()`; in tolerant mode
+   * (`tolerateCompileErrors: true`) `process()` emits a runtime-error replay
+   * for each per row.
+   */
+  compileErrors: FormulaError[];
 }

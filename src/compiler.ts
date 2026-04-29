@@ -54,7 +54,24 @@ function wrapTemplateInterpolations(node: ASTNode): void {
 }
 
 export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
-  const { columns, get, set, onError, functions: customFunctions, requireTemplateVars } = options;
+  const {
+    columns,
+    get,
+    set,
+    onError,
+    onCompileError,
+    onRuntimeError,
+    functions: customFunctions,
+    requireTemplateVars,
+    tolerateCompileErrors,
+  } = options;
+
+  // Resolve callback handlers. Phase-specific callbacks take precedence; the
+  // legacy `onError` is the unified fallback so existing callers keep working.
+  const handleCompileError: ((error: FormulaError) => unknown) | undefined =
+    onCompileError ?? onError;
+  const handleRuntimeError: ((error: FormulaError, row: T) => unknown) | undefined =
+    onRuntimeError ?? onError;
 
   // ---- Build function registry ----
 
@@ -72,6 +89,7 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
 
   const compiled = new Map<string, CompiledColumn>();
   const failedColumns = new Set<string>();
+  const compileErrors: FormulaError[] = [];
 
   for (const col of columns) {
     try {
@@ -90,9 +108,10 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
         message: `Failed to parse formula for "${col.name}": ${(cause as Error).message}`,
         cause,
       };
-      if (onError) {
-        onError(error);
-      } else {
+      compileErrors.push(error);
+      if (handleCompileError) {
+        handleCompileError(error);
+      } else if (!tolerateCompileErrors) {
         throw new Error(error.message);
       }
     }
@@ -125,9 +144,10 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
       referencedColumns: primaryCompiled?.refs ?? [],
       message: `Circular reference detected: ${cycle.join(' \u2192 ')}`,
     };
-    if (onError) {
-      onError(error);
-    } else {
+    compileErrors.push(error);
+    if (handleCompileError) {
+      handleCompileError(error);
+    } else if (!tolerateCompileErrors) {
       throw new Error(error.message);
     }
   }
@@ -142,8 +162,14 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
   // ---- Processor ----
 
   return {
+    compileErrors,
     process(row: T): void {
       const formulaValues = new Map<string, unknown>();
+      // Columns that errored on this row, with the originating FormulaError.
+      // Reading any of these via getColumn cascades a DEPENDENCY_ERROR.
+      // Bailed columns are NOT in here — bails return null and propagate
+      // normally without poisoning dependents.
+      const erroredColumns = new Map<string, FormulaError>();
 
       // Snapshot raw inputs for every formula column so self-references
       // (`price: 'price + 1'` or `price: 'SELF() + 1'`) resolve to the raw
@@ -160,12 +186,44 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
         }
       }
 
+      // Tolerant pre-loop: replay each compile error as a per-row runtime
+      // error. Honors the same fallback semantics as the runtime catch — if
+      // the handler returns a value, use it; otherwise mark the column
+      // errored so dependents cascade.
+      if (tolerateCompileErrors) {
+        for (const compileError of compileErrors) {
+          const replay: FormulaError = {
+            ...compileError,
+            severity: 'error',
+          };
+          if (handleRuntimeError) {
+            const fallback = handleRuntimeError(replay, row);
+            if (fallback !== undefined) {
+              formulaValues.set(replay.column, fallback);
+              set(row, replay.column, fallback, replay.referencedColumns);
+              continue;
+            }
+          }
+          erroredColumns.set(replay.column, replay);
+        }
+      }
+
       for (const col of evalOrder) {
         const ctx: EvalContext = {
           bailed: false,
           currentColumn: col.name,
 
           getColumn(name: string): unknown {
+            // Cascade: if a dependency errored on this row, propagate. Don't
+            // do this for self-references (rawValues has the pre-formula
+            // input, which is what self-refs are supposed to read).
+            if (name !== col.name && erroredColumns.has(name)) {
+              throw new FormulaEvalError(
+                'DEPENDENCY_ERROR',
+                `Cannot read column "${name}": dependency errored on this row`,
+                erroredColumns.get(name),
+              );
+            }
             if (formulaValues.has(name)) return formulaValues.get(name);
             // Self-ref during current column's eval: formulaValues is empty,
             // rawValues has the pre-formula input.
@@ -240,13 +298,17 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
             cause: originalCause,
           };
 
-          if (onError) {
-            const fallback = onError(error, row);
+          if (handleRuntimeError) {
+            const fallback = handleRuntimeError(error, row);
             if (fallback !== undefined) {
               formulaValues.set(col.name, fallback);
               set(row, col.name, fallback, col.refs);
+              continue;
             }
           }
+          // No fallback supplied — mark errored so dependents cascade with
+          // a DEPENDENCY_ERROR rather than silently reading stale raw input.
+          erroredColumns.set(col.name, error);
         }
       }
     },

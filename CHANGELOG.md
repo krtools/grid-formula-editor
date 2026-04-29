@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `onCompileError(error)` and `onRuntimeError(error, row)` compile options that split the existing `onError` into phase-specific callbacks. `onCompileError` fires once per `PARSE_ERROR` / `CIRCULAR_REFERENCE` at compile time; `onRuntimeError` fires per (row, column) at run time and accepts the same fallback-return semantics as the legacy callback. Phase-specific callbacks take precedence over `onError`.
+- `tolerateCompileErrors` compile option. When `true`, `compile()` does not throw on parse errors or circular references — affected columns are excluded from the eval order, and each `process(row)` call replays the compile error as a per-row runtime error so callers can flag the affected cells in a UI without losing the rest of the row.
+- `compileErrors: FormulaError[]` on the returned `CompiledProcessor`. Always populated regardless of mode, so callers can inspect compile-time issues without registering a callback.
+- `DEPENDENCY_ERROR` `FormulaErrorCode`. Emitted at runtime for any column that reads a dependency that errored on the same row; `cause` carries the originating `FormulaError` so callers can chase the chain.
+
+### Changed
+
+- Runtime errors now cascade to dependent columns by default. Previously, when column A errored at runtime and `onError` returned no fallback, dependent column C silently read A's pre-formula raw input via `get()` — masking the failure. C now fires `onRuntimeError` (or `onError`) with `code: 'DEPENDENCY_ERROR'`. Bails are unchanged: `BAIL()` and `REQUIRE(blank)` still produce `null` and propagate to dependents without firing an error. Returning a fallback from the runtime handler still short-circuits the cascade.
+
+### Deprecated
+
+- `onError` in favor of `onCompileError` + `onRuntimeError`. The legacy callback continues to work as a unified fallback when the phase-specific callbacks aren't supplied — existing code is unaffected.
+
 ## [0.6.2] - 2026-04-22
 
 ### Fixed

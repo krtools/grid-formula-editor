@@ -162,6 +162,22 @@ The difference from `IFERROR`: `IFERROR` catches exceptions; `BAIL` / `REQUIRE`
 signal "this formula has no meaningful result, render blank" and cannot be
 swallowed by an enclosing `IFERROR`.
 
+#### Bail propagates; errors cascade
+
+Bails and errors propagate differently to dependent columns:
+
+- **Bail in column A** → A is `null`. Dependent columns read `null` and
+  continue normally (no error fires).
+- **Error in column A** (with no fallback from `onRuntimeError`) → A is
+  marked errored on the row. Dependent columns fail with a
+  `DEPENDENCY_ERROR` so the issue surfaces at every affected cell rather
+  than silently fanning out as bad numeric values.
+
+Use this distinction when designing column dependencies. If you want a
+"missing data" signal to flow through an entire chain without error noise,
+prefer `BAIL` / `REQUIRE`. If you want broken cells to be visibly broken
+all the way down, let the error propagate.
+
 #### Require every template variable by default
 
 If most of your templates want the strict `REQUIRE`-everywhere behavior, pass

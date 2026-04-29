@@ -971,6 +971,421 @@ describe('error handling', () => {
 });
 
 // ============================================================
+// Phase-specific callbacks: onCompileError / onRuntimeError
+// ============================================================
+
+describe('onCompileError / onRuntimeError split', () => {
+  it('onCompileError fires for parse error; onRuntimeError does not', () => {
+    const compileErrors: FormulaError[] = [];
+    const runtimeErrors: FormulaError[] = [];
+    compile<Row>({
+      columns: [{ name: 'result', formula: '+ + +' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onCompileError: (e) => { compileErrors.push(e); },
+      onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
+    });
+    expect(compileErrors).toHaveLength(1);
+    expect(compileErrors[0].code).toBe('PARSE_ERROR');
+    expect(runtimeErrors).toHaveLength(0);
+  });
+
+  it('onCompileError fires for circular reference; onRuntimeError does not', () => {
+    const compileErrors: FormulaError[] = [];
+    const runtimeErrors: FormulaError[] = [];
+    compile<Row>({
+      columns: [
+        { name: 'a', formula: 'b + 1' },
+        { name: 'b', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onCompileError: (e) => { compileErrors.push(e); },
+      onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
+    });
+    expect(compileErrors.some(e => e.code === 'CIRCULAR_REFERENCE')).toBe(true);
+    expect(runtimeErrors).toHaveLength(0);
+  });
+
+  it('onRuntimeError fires for runtime errors; onCompileError does not', () => {
+    const compileErrors: FormulaError[] = [];
+    const runtimeErrors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [{ name: 'result', formula: 'a / b' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onCompileError: (e) => { compileErrors.push(e); },
+      onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
+    });
+    proc.process({ a: 10, b: 0 });
+    expect(compileErrors).toHaveLength(0);
+    expect(runtimeErrors).toHaveLength(1);
+    expect(runtimeErrors[0].code).toBe('EVAL_ERROR');
+  });
+
+  it('legacy onError still fires for both phases when alone', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'result', formula: 'a / b' },
+        { name: 'broken', formula: '+ + +' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onError: (e) => { errors.push(e); return undefined; },
+    });
+    expect(errors.some(e => e.code === 'PARSE_ERROR')).toBe(true);
+    proc.process({ a: 10, b: 0 });
+    expect(errors.some(e => e.code === 'EVAL_ERROR')).toBe(true);
+  });
+
+  it('onCompileError takes precedence over onError for compile phase', () => {
+    const compileErrors: FormulaError[] = [];
+    const generalErrors: FormulaError[] = [];
+    compile<Row>({
+      columns: [{ name: 'result', formula: '+ + +' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onCompileError: (e) => { compileErrors.push(e); },
+      onError: (e) => { generalErrors.push(e); return undefined; },
+    });
+    expect(compileErrors).toHaveLength(1);
+    expect(generalErrors).toHaveLength(0);
+  });
+
+  it('onRuntimeError takes precedence over onError for runtime phase', () => {
+    const runtimeErrors: FormulaError[] = [];
+    const generalErrors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [{ name: 'result', formula: 'a / b' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
+      onError: (e) => { generalErrors.push(e); return undefined; },
+    });
+    proc.process({ a: 10, b: 0 });
+    expect(runtimeErrors).toHaveLength(1);
+    expect(generalErrors).toHaveLength(0);
+  });
+
+  it('onError is the fallback when only onRuntimeError is set: compile errors hit onError', () => {
+    const runtimeErrors: FormulaError[] = [];
+    const generalErrors: FormulaError[] = [];
+    compile<Row>({
+      columns: [{ name: 'result', formula: '+ + +' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
+      onError: (e) => { generalErrors.push(e); return undefined; },
+    });
+    expect(generalErrors.some(e => e.code === 'PARSE_ERROR')).toBe(true);
+    expect(runtimeErrors).toHaveLength(0);
+  });
+});
+
+// ============================================================
+// compileErrors exposure on the processor
+// ============================================================
+
+describe('compileErrors exposure', () => {
+  it('is empty after a clean compile', () => {
+    const proc = makeProcessor({ result: 'a + b' });
+    expect(proc.compileErrors).toEqual([]);
+  });
+
+  it('contains a PARSE_ERROR entry after a parse error in tolerant mode', () => {
+    const proc = compile<Row>({
+      columns: [{ name: 'result', formula: '+ + +' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      tolerateCompileErrors: true,
+    });
+    expect(proc.compileErrors).toHaveLength(1);
+    expect(proc.compileErrors[0].code).toBe('PARSE_ERROR');
+    expect(proc.compileErrors[0].column).toBe('result');
+  });
+
+  it('contains a CIRCULAR_REFERENCE entry after a cycle in tolerant mode', () => {
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'b + 1' },
+        { name: 'b', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      tolerateCompileErrors: true,
+    });
+    expect(proc.compileErrors.some(e => e.code === 'CIRCULAR_REFERENCE')).toBe(true);
+  });
+
+  it('also populated in non-tolerant mode when a handler is supplied', () => {
+    const proc = compile<Row>({
+      columns: [{ name: 'result', formula: '+ + +' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onCompileError: () => {},
+    });
+    expect(proc.compileErrors).toHaveLength(1);
+    expect(proc.compileErrors[0].code).toBe('PARSE_ERROR');
+  });
+});
+
+// ============================================================
+// tolerateCompileErrors: per-row replay
+// ============================================================
+
+describe('tolerateCompileErrors', () => {
+  it('does not throw on parse error with no handler', () => {
+    expect(() =>
+      compile<Row>({
+        columns: [{ name: 'result', formula: '+ + +' }],
+        get: (row, col) => row[col],
+        set: (row, col, val) => { row[col] = val; },
+        tolerateCompileErrors: true,
+      }),
+    ).not.toThrow();
+  });
+
+  it('does not throw on circular reference with no handler', () => {
+    expect(() =>
+      compile<Row>({
+        columns: [
+          { name: 'a', formula: 'b + 1' },
+          { name: 'b', formula: 'a + 1' },
+        ],
+        get: (row, col) => row[col],
+        set: (row, col, val) => { row[col] = val; },
+        tolerateCompileErrors: true,
+      }),
+    ).not.toThrow();
+  });
+
+  it('replays parse error per row via onRuntimeError', () => {
+    const runtimeErrors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [{ name: 'result', formula: '+ + +' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
+      tolerateCompileErrors: true,
+    });
+    proc.process({});
+    proc.process({});
+    expect(runtimeErrors).toHaveLength(2);
+    expect(runtimeErrors[0].code).toBe('PARSE_ERROR');
+    expect(runtimeErrors[0].severity).toBe('error');
+    expect(runtimeErrors[0].column).toBe('result');
+  });
+
+  it('replays circular reference per row via onRuntimeError', () => {
+    const runtimeErrors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'b + 1' },
+        { name: 'b', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
+      tolerateCompileErrors: true,
+    });
+    proc.process({});
+    expect(runtimeErrors.some(e => e.code === 'CIRCULAR_REFERENCE')).toBe(true);
+    expect(runtimeErrors.find(e => e.code === 'CIRCULAR_REFERENCE')!.severity).toBe('error');
+  });
+
+  it('non-tolerant mode still throws on parse error without handler', () => {
+    expect(() =>
+      compile<Row>({
+        columns: [{ name: 'result', formula: '+ + +' }],
+        get: (row, col) => row[col],
+        set: (row, col, val) => { row[col] = val; },
+      }),
+    ).toThrow();
+  });
+
+  it('non-tolerant mode still throws on circular reference without handler', () => {
+    expect(() =>
+      compile<Row>({
+        columns: [
+          { name: 'a', formula: 'b + 1' },
+          { name: 'b', formula: 'a + 1' },
+        ],
+        get: (row, col) => row[col],
+        set: (row, col, val) => { row[col] = val; },
+      }),
+    ).toThrow(/Circular reference/);
+  });
+
+  it('tolerant mode + fallback: replay handler returns a value, column gets it', () => {
+    const proc = compile<Row>({
+      columns: [{ name: 'result', formula: '+ + +' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: () => 'oops',
+      tolerateCompileErrors: true,
+    });
+    const row: Row = {};
+    proc.process(row);
+    expect(row.result).toBe('oops');
+  });
+});
+
+// ============================================================
+// Cascade-on-error vs bail-no-cascade
+// ============================================================
+
+describe('cascade-on-error', () => {
+  it('runtime error in A cascades DEPENDENCY_ERROR to dependent C', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'x / y' },
+        { name: 'c', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { errors.push(e); return undefined; },
+    });
+    proc.process({ x: 10, y: 0 });
+    expect(errors.map(e => e.code)).toEqual(['EVAL_ERROR', 'DEPENDENCY_ERROR']);
+    expect(errors[1].column).toBe('c');
+    expect(errors[1].cause).toBeDefined();
+    expect((errors[1].cause as FormulaError).code).toBe('EVAL_ERROR');
+  });
+
+  it('fallback on A means C does NOT cascade — C reads the fallback', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'x / y' },
+        { name: 'c', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => {
+        errors.push(e);
+        return e.column === 'a' ? 0 : undefined;
+      },
+    });
+    const row: Row = { x: 10, y: 0 };
+    proc.process(row);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].code).toBe('EVAL_ERROR');
+    expect(row.a).toBe(0);
+    expect(row.c).toBe(1);
+  });
+
+  it('BAIL() in A does NOT cascade — C reads null', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'BAIL()' },
+        { name: 'c', formula: 'COALESCE(a, 99)' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { errors.push(e); return undefined; },
+    });
+    const row: Row = {};
+    proc.process(row);
+    expect(errors).toHaveLength(0);
+    expect(row.a).toBeNull();
+    expect(row.c).toBe(99);
+  });
+
+  it('REQUIRE on blank does NOT cascade — bails through as null', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'REQUIRE(x)' },
+        { name: 'c', formula: 'COALESCE(a, 99)' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { errors.push(e); return undefined; },
+    });
+    const row: Row = { x: null };
+    proc.process(row);
+    expect(errors).toHaveLength(0);
+    expect(row.a).toBeNull();
+    expect(row.c).toBe(99);
+  });
+
+  it('diamond: A errors, B and C depend on A, D depends on B and C — all cascade', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'x / y' },
+        { name: 'b', formula: 'a + 1' },
+        { name: 'c', formula: 'a * 2' },
+        { name: 'd', formula: 'b + c' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { errors.push(e); return undefined; },
+    });
+    proc.process({ x: 10, y: 0 });
+    const byCol = Object.fromEntries(errors.map(e => [e.column, e.code]));
+    expect(byCol.a).toBe('EVAL_ERROR');
+    expect(byCol.b).toBe('DEPENDENCY_ERROR');
+    expect(byCol.c).toBe('DEPENDENCY_ERROR');
+    expect(byCol.d).toBe('DEPENDENCY_ERROR');
+  });
+
+  it('tolerant compile error on A also cascades to dependents', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: '+ + +' },
+        { name: 'c', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { errors.push(e); return undefined; },
+      tolerateCompileErrors: true,
+    });
+    proc.process({});
+    const byCol = Object.fromEntries(errors.map(e => [e.column, e.code]));
+    expect(byCol.a).toBe('PARSE_ERROR');
+    expect(byCol.c).toBe('DEPENDENCY_ERROR');
+  });
+
+  it('errored column without a runtime handler still cascades', () => {
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'x / y' },
+        { name: 'c', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      // No onRuntimeError on `a`'s error to simulate the silent-skip case;
+      // we only watch `c`.
+      onError: (e) => { if (e.column === 'c') errors.push(e); return undefined; },
+    });
+    proc.process({ x: 10, y: 0 });
+    expect(errors).toHaveLength(1);
+    expect(errors[0].code).toBe('DEPENDENCY_ERROR');
+  });
+
+  it('self-reference does NOT cascade when self errored — self-refs read raw input', () => {
+    // A formula `price + 1` reading its own `price` reads the raw input,
+    // not the computed value, so even a hypothetical self-error wouldn't
+    // poison itself. Verifying the self-ref carve-out in getColumn.
+    const errors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [{ name: 'price', formula: 'price + 1' }],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { errors.push(e); return undefined; },
+    });
+    proc.process({ price: 10 });
+    expect(errors).toHaveLength(0);
+  });
+});
+
+// ============================================================
 // Custom functions
 // ============================================================
 

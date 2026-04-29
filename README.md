@@ -339,7 +339,7 @@ If coercion fails (e.g. `Number("abc")` is `NaN`), the engine raises a
 
 ### `FormulaError`
 
-Every error routed through `onError` carries full context:
+Every error carries full context:
 
 ```ts
 interface FormulaError {
@@ -363,21 +363,24 @@ interface FormulaError {
 | `TYPE_ERROR`        | `warning` | Runtime: value could not be coerced (e.g. `Number("abc")`). |
 | `EVAL_ERROR`        | `error`   | Runtime: evaluation failure (e.g. division by zero). |
 | `FUNCTION_ERROR`    | `error`   | Runtime: function not found or threw.             |
+| `DEPENDENCY_ERROR`  | `error`   | Runtime: a formula tried to read a column that errored on the same row. `cause` carries the originating error. |
 
 ---
 
 ## Error handling
 
-### Without `onError`
+### Two phases, two callbacks
 
-- **Compile-time** errors (`PARSE_ERROR`, `CIRCULAR_REFERENCE`) throw from
-  `compile()`.
-- **Runtime** errors silently skip the column — `set()` is not called.
+Errors split into two phases — compile and runtime — and each has its own
+optional callback:
 
-### With `onError`
-
-All errors are routed through the handler. The handler's return value controls
-what happens to the cell:
+- **`onCompileError(error)`** — fires once per `PARSE_ERROR` /
+  `CIRCULAR_REFERENCE` during `compile()`. Return value is ignored (no row
+  in scope).
+- **`onRuntimeError(error, row)`** — fires per (row, column) during
+  `process(row)`. Optional return value is used as the cell's value (and
+  cached for downstream formulas); returning `undefined` leaves the column
+  unset and marks it errored on the row, which cascades to dependents.
 
 ```ts
 const processor = compile({
@@ -387,37 +390,97 @@ const processor = compile({
   ],
   get: (row, col) => row[col],
   set: (row, col, value) => { row[col] = value; },
-  onError: (error, row) => {
-    console.warn(`[${error.severity}] ${error.column}: ${error.message}`);
-    console.warn(`  formula: ${error.formula}`);
-    console.warn(`  refs: ${error.referencedColumns.join(', ')}`);
 
-    // Return a fallback value based on severity
-    if (error.code === 'EVAL_ERROR') return 0;     // e.g. division by zero → 0
+  onCompileError: (error) => {
+    console.error(`[compile] ${error.column}: ${error.message}`);
+  },
+
+  onRuntimeError: (error, row) => {
+    if (error.code === 'EVAL_ERROR') return 0;     // division by zero → 0
     if (error.code === 'TYPE_ERROR') return null;   // coercion failure → null
-    return undefined; // skip this column entirely
+    return undefined; // skip this column; dependents cascade
   },
 });
 ```
 
-When `onError` returns a value, that value is:
-1. **Passed to `set()`** for the current column.
-2. **Cached** so downstream formula columns can reference it.
+### Defaults when no callback is supplied
 
-When `onError` returns `undefined`, `set()` is not called and the column is
-skipped.
+- **Compile error**: `compile()` throws on the first `PARSE_ERROR` /
+  `CIRCULAR_REFERENCE` — unless `tolerateCompileErrors: true` is set
+  (see below).
+- **Runtime error**: the column is silently skipped. Dependents cascade
+  (see "Cascade-on-error" below).
+
+### Legacy `onError` (deprecated, still works)
+
+A single `onError(error, row?)` callback is supported as a unified fallback
+for both phases. It fires whenever the phase-specific callback isn't set.
+New code should prefer `onCompileError` + `onRuntimeError`.
+
+### `tolerateCompileErrors` — keep going through compile failures
+
+```ts
+const processor = compile({
+  columns: [...],
+  get, set,
+  tolerateCompileErrors: true,
+  onRuntimeError: (error, row) => {
+    // Now fires for parse / circular errors too — once per (row, column).
+    return undefined;
+  },
+});
+```
+
+When `true`, `compile()` does not throw on `PARSE_ERROR` /
+`CIRCULAR_REFERENCE`. The errored columns are excluded from the eval order,
+but each `process(row)` call replays the compile error through
+`onRuntimeError` (or `onError`) once for each affected column. This lets a
+grid render with the rest of the rows intact and decorate the affected
+cells with an error indicator.
+
+The `compileErrors` array is exposed on the returned processor regardless
+of mode, so you can inspect compile-time issues without registering a
+callback:
+
+```ts
+const processor = compile({ ..., tolerateCompileErrors: true });
+if (processor.compileErrors.length > 0) {
+  console.warn(processor.compileErrors);
+}
+```
+
+### Cascade-on-error vs bail-no-cascade
+
+When a column errors at runtime and no fallback is returned, the runner
+marks the column errored on that row. Any downstream formula that reads
+the errored column fails with a `DEPENDENCY_ERROR` (with `cause` linking
+back to the originating error), so the error surfaces as a per-cell
+indicator rather than silently fanning out as bad numeric values.
+
+Bails are different. `BAIL()` and `REQUIRE(blank)` produce `null` for the
+column, not an error. Dependents read that `null` and continue normally —
+typical use:
+
+```
+totals: BAIL()        // → null
+label:  COALESCE(totals, "n/a")   // → "n/a", no error
+```
+
+Returning a fallback from `onRuntimeError` also short-circuits the
+cascade — dependents see the fallback, not an error.
 
 ### `IFERROR` — formula-level error handling
 
-`IFERROR` catches errors *inside* a formula without reaching `onError`:
+`IFERROR` catches errors *inside* a formula without reaching the runtime
+handler:
 
 ```
 IFERROR(revenue / costs, 0)
 ```
 
-If `costs` is zero, the division throws, `IFERROR` catches it, and the formula
-returns `0`. The `onError` handler is never called. This is useful for expected
-edge cases you want to handle inline.
+If `costs` is zero, the division throws, `IFERROR` catches it, the formula
+returns `0`, and neither `onRuntimeError` nor `onError` is called. Useful
+for expected edge cases you want to handle inline.
 
 ---
 
