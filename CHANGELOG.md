@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-04-29
+
 ### Fixed
 
 - Circular reference detection now emits a `FormulaError` for every column in the cycle, not just the entry point. Previously a 2-way cycle `a ↔ b` produced one `CIRCULAR_REFERENCE` error for `a`; with `tolerateCompileErrors: true` only `a` got a per-row runtime replay, while `b` was silently absent. Now both fire — each error carries that column's own formula and references — so a UI showing per-cell error indicators flags every affected cell.
@@ -152,7 +154,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/krtools/grid-formula-editor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/krtools/grid-formula-editor/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/krtools/grid-formula-editor/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/krtools/grid-formula-editor/compare/v0.6.0...v0.6.1
