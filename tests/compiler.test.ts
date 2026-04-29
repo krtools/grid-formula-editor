@@ -990,7 +990,7 @@ describe('onCompileError / onRuntimeError split', () => {
     expect(runtimeErrors).toHaveLength(0);
   });
 
-  it('onCompileError fires for circular reference; onRuntimeError does not', () => {
+  it('onCompileError fires for every member of a circular reference; onRuntimeError does not', () => {
     const compileErrors: FormulaError[] = [];
     const runtimeErrors: FormulaError[] = [];
     compile<Row>({
@@ -1003,7 +1003,8 @@ describe('onCompileError / onRuntimeError split', () => {
       onCompileError: (e) => { compileErrors.push(e); },
       onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
     });
-    expect(compileErrors.some(e => e.code === 'CIRCULAR_REFERENCE')).toBe(true);
+    const circ = compileErrors.filter(e => e.code === 'CIRCULAR_REFERENCE');
+    expect(circ.map(e => e.column).sort()).toEqual(['a', 'b']);
     expect(runtimeErrors).toHaveLength(0);
   });
 
@@ -1177,7 +1178,7 @@ describe('tolerateCompileErrors', () => {
     expect(runtimeErrors[0].column).toBe('result');
   });
 
-  it('replays circular reference per row via onRuntimeError', () => {
+  it('replays circular reference per row via onRuntimeError — every cycle member fires', () => {
     const runtimeErrors: FormulaError[] = [];
     const proc = compile<Row>({
       columns: [
@@ -1190,8 +1191,37 @@ describe('tolerateCompileErrors', () => {
       tolerateCompileErrors: true,
     });
     proc.process({});
-    expect(runtimeErrors.some(e => e.code === 'CIRCULAR_REFERENCE')).toBe(true);
-    expect(runtimeErrors.find(e => e.code === 'CIRCULAR_REFERENCE')!.severity).toBe('error');
+    const circ = runtimeErrors.filter(e => e.code === 'CIRCULAR_REFERENCE');
+    expect(circ).toHaveLength(2);
+    expect(circ.map(e => e.column).sort()).toEqual(['a', 'b']);
+    for (const e of circ) {
+      expect(e.severity).toBe('error');
+      expect(e.formula).toBeTruthy();
+    }
+    // Each error carries the failing column's own formula and refs, not
+    // just the cycle's entry point's.
+    expect(circ.find(e => e.column === 'a')!.formula).toBe('b + 1');
+    expect(circ.find(e => e.column === 'b')!.formula).toBe('a + 1');
+    expect(circ.find(e => e.column === 'a')!.referencedColumns).toEqual(['b']);
+    expect(circ.find(e => e.column === 'b')!.referencedColumns).toEqual(['a']);
+  });
+
+  it('replays circular reference for 3-cycle — every member fires', () => {
+    const runtimeErrors: FormulaError[] = [];
+    const proc = compile<Row>({
+      columns: [
+        { name: 'a', formula: 'b + 1' },
+        { name: 'b', formula: 'c + 1' },
+        { name: 'c', formula: 'a + 1' },
+      ],
+      get: (row, col) => row[col],
+      set: (row, col, val) => { row[col] = val; },
+      onRuntimeError: (e) => { runtimeErrors.push(e); return undefined; },
+      tolerateCompileErrors: true,
+    });
+    proc.process({});
+    const circ = runtimeErrors.filter(e => e.code === 'CIRCULAR_REFERENCE');
+    expect(circ.map(e => e.column).sort()).toEqual(['a', 'b', 'c']);
   });
 
   it('non-tolerant mode still throws on parse error without handler', () => {

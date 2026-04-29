@@ -134,21 +134,29 @@ export function compile<T>(options: CompileOptions<T>): CompiledProcessor<T> {
   const circularColumns = new Set<string>();
   for (const cycle of cycles) {
     for (const name of cycle) circularColumns.add(name);
-    const primaryCol = cycle[0];
-    const primaryCompiled = compiled.get(primaryCol);
-    const error: FormulaError = {
-      code: 'CIRCULAR_REFERENCE',
-      severity: 'fatal',
-      column: primaryCol,
-      formula: formulaLookup.get(primaryCol) ?? '',
-      referencedColumns: primaryCompiled?.refs ?? [],
-      message: `Circular reference detected: ${cycle.join(' \u2192 ')}`,
-    };
-    compileErrors.push(error);
-    if (handleCompileError) {
-      handleCompileError(error);
-    } else if (!tolerateCompileErrors) {
-      throw new Error(error.message);
+    // Emit one FormulaError for every column in the cycle, not just the
+    // first. Each member is part of the unresolvable loop and (in tolerant
+    // mode) needs its own per-row error replay so the UI can flag every
+    // affected cell, not only the cycle's entry point.
+    // resolveDependencies returns cycles that close the loop (e.g. a 2-cycle
+    // is `['a', 'b', 'a']`); dedupe so each column gets exactly one error.
+    const cyclePath = cycle.join(' \u2192 ');
+    for (const colName of new Set(cycle)) {
+      const colCompiled = compiled.get(colName);
+      const error: FormulaError = {
+        code: 'CIRCULAR_REFERENCE',
+        severity: 'fatal',
+        column: colName,
+        formula: formulaLookup.get(colName) ?? '',
+        referencedColumns: colCompiled?.refs ?? [],
+        message: `Circular reference detected: ${cyclePath}`,
+      };
+      compileErrors.push(error);
+      if (handleCompileError) {
+        handleCompileError(error);
+      } else if (!tolerateCompileErrors) {
+        throw new Error(error.message);
+      }
     }
   }
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Circular reference detection now emits a `FormulaError` for every column in the cycle, not just the entry point. Previously a 2-way cycle `a ↔ b` produced one `CIRCULAR_REFERENCE` error for `a`; with `tolerateCompileErrors: true` only `a` got a per-row runtime replay, while `b` was silently absent. Now both fire — each error carries that column's own formula and references — so a UI showing per-cell error indicators flags every affected cell.
+
 ## [0.7.0] - 2026-04-29
 
 ### Added
