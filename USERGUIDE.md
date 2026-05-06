@@ -162,6 +162,76 @@ The difference from `IFERROR`: `IFERROR` catches exceptions; `BAIL` / `REQUIRE`
 signal "this formula has no meaningful result, render blank" and cannot be
 swallowed by an enclosing `IFERROR`.
 
+### Regex functions
+
+Three Microsoft-compatible builtins:
+
+```
+REGEXREPLACE(text, pattern, replacement, [occurrence=0], [case_sensitivity=0])
+REGEXTEST(text, pattern, [case_sensitivity=0])
+REGEXEXTRACT(text, pattern, [return_mode=0], [case_sensitivity=0])
+```
+
+- `occurrence` (REGEXREPLACE): `0` (default) replaces every match.
+  A positive `N` replaces only the Nth match (1-indexed); if there are
+  fewer than `N` matches the text is returned unchanged. Negative values
+  throw.
+- `case_sensitivity`: `0` (default) is case sensitive. `1` is case
+  insensitive. Anything else throws.
+- `return_mode` (REGEXEXTRACT): only `0` (first match as a string) is
+  supported in this version. Modes `1` and `2` (array-returning) throw
+  "not yet supported".
+
+All patterns compile with the JavaScript `u` (Unicode) flag — Unicode-aware,
+surrogate-pair correct, and `\p{...}` property escapes work. The flip side
+is that some malformed escapes that quietly worked under non-Unicode regex
+will now error.
+
+#### Backslashes in patterns
+
+The formula tokenizer recognises only a small set of escape sequences in
+`"..."`, `'...'`, and template text:
+
+| Source | Tokenizer produces | Effect under regex |
+|---|---|---|
+| `\n` | newline (1 char) | matches newline (regex `\n` is also a newline char) |
+| `\t` | tab | matches tab |
+| `\\` | single backslash | literal `\` |
+| `\'` `\"` | the quote char | literal quote |
+| `\d`, `\w`, `\s`, `\b`, `\1`, `\p{…}`, anything else | **2 chars: `\` + letter** | works as regex |
+
+Net effect: most regex syntax just works without doubling backslashes —
+write `"\d+"` and it matches digits. Two cases need care:
+
+- A literal backslash needs **four** in the formula source: `"\\\\"` →
+  tokenizer outputs `\\` → regex matches a single `\`.
+- `"\."` does **not** escape the dot. The tokenizer leaves `\.` as two
+  chars, and `\.` in regex means literal dot, so this works — but if you
+  were copying a JS-style escape like `"\\\."` that's also fine, both
+  reach regex as `\.`.
+
+#### Examples
+
+```
+REGEXREPLACE(name, "\s+", "_")
+  → collapse whitespace runs to underscore
+
+REGEXREPLACE("abc 123 def 456", "(\d+)", "<$1>")
+  → "abc <123> def <456>"          ($1 backreference, replace all)
+
+REGEXREPLACE("abc 123 def 456", "(\d+)", "<$1>", 2)
+  → "abc 123 def <456>"            (Nth occurrence)
+
+REGEXREPLACE("Hello", "hello", "X", 0, 1)
+  → "X"                             (case insensitive)
+
+REGEXTEST(email, "^[\w.+-]+@[\w-]+\.[\w.-]+$")
+  → email shape check
+
+REGEXEXTRACT(url, "https://([^/]+)")
+  → host part of a URL
+```
+
 #### Bail propagates; errors cascade
 
 Bails and errors propagate differently to dependent columns:

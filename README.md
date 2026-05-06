@@ -275,6 +275,32 @@ URLDECODE(rawParam)
 → "price>=100"
 ```
 
+### Regex
+
+Microsoft-compatible regex builtins. All patterns are compiled with the
+JavaScript `u` (Unicode) flag — Unicode-aware matching, surrogate-pair
+correctness, and `\p{...}` property escapes. Invalid patterns throw
+`FUNCTION_ERROR` so they can be flagged per cell via `onRuntimeError`.
+
+| Function | Description |
+|----------|-------------|
+| `REGEXREPLACE(text, pattern, replacement, [occurrence=0], [case_sensitivity=0])` | Replace matches. `occurrence`: `0` = all, `N` = the Nth match (1-indexed). `case_sensitivity`: `0` = sensitive, `1` = insensitive. |
+| `REGEXTEST(text, pattern, [case_sensitivity=0])` | `true` if the pattern matches anywhere in `text`. |
+| `REGEXEXTRACT(text, pattern, [return_mode=0], [case_sensitivity=0])` | First match (mode `0`) as a string. Modes `1` and `2` (array-returning) aren't supported yet. |
+
+#### Examples
+
+```
+REGEXREPLACE(name, "\s+", "_")              → "John_Doe"  (collapse whitespace)
+REGEXREPLACE("abc 123", "(\d+)", "<$1>")    → "abc <123>" ($1 backref)
+REGEXREPLACE("a.b.c", "\\.", "X")           → "aXbXc"     (literal dot)
+REGEXTEST(email, "@\w+\.\w+")               → true / false
+REGEXEXTRACT(url, "https://([^/]+)")        → "example.com"
+```
+
+See the [Regex functions section in USERGUIDE.md](USERGUIDE.md) for the
+backslash-escape table and pattern-authoring tips.
+
 ### Type / utility
 
 | Function             | Description                                       |

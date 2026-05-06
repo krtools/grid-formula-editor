@@ -1,5 +1,6 @@
 import { toNumber, toBoolean, toString } from './coerce.js';
-import { CompiledFormulaFunction } from './types.js';
+import { compileRegex } from './regex.js';
+import { CompiledFormulaFunction, FormulaEvalError } from './types.js';
 
 export type FormulaFunction = CompiledFormulaFunction;
 
@@ -77,6 +78,80 @@ export function createBuiltinFunctions(): Map<string, FormulaFunction> {
   fns.set('URLENCODE', (_ctx, text: unknown) => encodeURIComponent(toString(text)));
 
   fns.set('URLDECODE', (_ctx, text: unknown) => decodeURIComponent(toString(text)));
+
+  // ---- Regex ----
+  // Microsoft-compatible regex builtins. All patterns are compiled with the
+  // `u` flag (Unicode-aware; `\p{...}` supported). Invalid patterns throw
+  // FUNCTION_ERROR so the runtime handler can flag the cell.
+
+  fns.set('REGEXREPLACE', (
+    _ctx,
+    text: unknown,
+    pattern: unknown,
+    replacement: unknown,
+    occurrence: unknown = 0,
+    caseSensitivity: unknown = 0,
+  ) => {
+    const t = toString(text);
+    const p = toString(pattern);
+    const r = toString(replacement);
+    const occ = toNumber(occurrence);
+    if (!Number.isInteger(occ) || occ < 0) {
+      throw new FormulaEvalError(
+        'FUNCTION_ERROR',
+        `occurrence must be a non-negative integer, got ${occ}`,
+      );
+    }
+    const cs = toNumber(caseSensitivity);
+    if (occ === 0) {
+      return t.replace(compileRegex(p, { global: true, caseSensitivity: cs }), r);
+    }
+    // Replace only the Nth match (1-indexed). Walk matches with a global
+    // regex and apply $-substitution against the matched substring via a
+    // one-off non-global replace.
+    const re = compileRegex(p, { global: true, caseSensitivity: cs });
+    const single = compileRegex(p, { global: false, caseSensitivity: cs });
+    let i = 0;
+    return t.replace(re, (match) => {
+      i++;
+      if (i !== occ) return match;
+      return match.replace(single, r);
+    });
+  });
+
+  fns.set('REGEXTEST', (_ctx, text: unknown, pattern: unknown, caseSensitivity: unknown = 0) => {
+    const t = toString(text);
+    const p = toString(pattern);
+    const cs = toNumber(caseSensitivity);
+    return compileRegex(p, { global: false, caseSensitivity: cs }).test(t);
+  });
+
+  fns.set('REGEXEXTRACT', (
+    _ctx,
+    text: unknown,
+    pattern: unknown,
+    returnMode: unknown = 0,
+    caseSensitivity: unknown = 0,
+  ) => {
+    const t = toString(text);
+    const p = toString(pattern);
+    const mode = toNumber(returnMode);
+    const cs = toNumber(caseSensitivity);
+    if (mode === 0) {
+      const m = t.match(compileRegex(p, { global: false, caseSensitivity: cs }));
+      return m ? m[0] : '';
+    }
+    if (mode === 1 || mode === 2) {
+      throw new FormulaEvalError(
+        'FUNCTION_ERROR',
+        `REGEXEXTRACT return_mode ${mode} is not yet supported (no array type)`,
+      );
+    }
+    throw new FormulaEvalError(
+      'FUNCTION_ERROR',
+      `return_mode must be 0, 1, or 2, got ${mode}`,
+    );
+  });
 
   // ---- Logical ----
   // IF, AND, OR, IFERROR, BAIL, REQUIRE, SELF are handled as special forms in

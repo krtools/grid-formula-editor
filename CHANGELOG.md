@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `REGEXREPLACE`, `REGEXTEST`, and `REGEXEXTRACT` builtins, basically compatible with Microsoft Excel's equivalents. All patterns are compiled with the JavaScript `u` (Unicode) flag — Unicode-aware matching, surrogate-pair correctness, and `\p{...}` property escapes work. Invalid patterns throw `FUNCTION_ERROR` so they can be flagged per cell via `onRuntimeError`. REGEXEXTRACT supports `return_mode 0` (first match) only this round; modes `1` and `2` (array-returning) will land alongside an array value type. See the new "Regex functions" section in USERGUIDE.md for the backslash-escape table and pattern-authoring tips.
+
 ## [0.7.1] - 2026-04-29
 
 ### Fixed

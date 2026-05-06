@@ -776,6 +776,232 @@ describe('type utilities', () => {
 });
 
 // ============================================================
+// Regex
+// ============================================================
+
+describe('REGEXREPLACE', () => {
+  it('replaces all matches by default', () => {
+    const proc = makeProcessor({ result: 'REGEXREPLACE(text, "\\w+", "X")' });
+    const row: Row = { text: 'hello world' };
+    proc.process(row);
+    expect(row.result).toBe('X X');
+  });
+
+  it('replaces only the Nth occurrence (1-indexed)', () => {
+    const proc1 = makeProcessor({ result: 'REGEXREPLACE(text, "\\w+", "X", 1)' });
+    const row1: Row = { text: 'hello world' };
+    proc1.process(row1);
+    expect(row1.result).toBe('X world');
+
+    const proc2 = makeProcessor({ result: 'REGEXREPLACE(text, "\\w+", "X", 2)' });
+    const row2: Row = { text: 'hello world' };
+    proc2.process(row2);
+    expect(row2.result).toBe('hello X');
+  });
+
+  it('returns text unchanged when occurrence > match count', () => {
+    const proc = makeProcessor({ result: 'REGEXREPLACE(text, "\\w+", "X", 99)' });
+    const row: Row = { text: 'hello world' };
+    proc.process(row);
+    expect(row.result).toBe('hello world');
+  });
+
+  it('case sensitive by default', () => {
+    const proc = makeProcessor({ result: 'REGEXREPLACE(text, "hello", "X")' });
+    const row: Row = { text: 'Hello' };
+    proc.process(row);
+    expect(row.result).toBe('Hello');
+  });
+
+  it('case insensitive when case_sensitivity=1', () => {
+    const proc = makeProcessor({ result: 'REGEXREPLACE(text, "hello", "X", 0, 1)' });
+    const row: Row = { text: 'Hello' };
+    proc.process(row);
+    expect(row.result).toBe('X');
+  });
+
+  it('supports $1 backreferences in the replacement', () => {
+    const proc = makeProcessor({ result: 'REGEXREPLACE(text, "(\\d+)", "<$1>")' });
+    const row: Row = { text: 'abc 123' };
+    proc.process(row);
+    expect(row.result).toBe('abc <123>');
+  });
+
+  it('regex metacharacter . matches any char', () => {
+    const proc = makeProcessor({ result: 'REGEXREPLACE(text, ".", "X")' });
+    const row: Row = { text: 'a.b.c' };
+    proc.process(row);
+    expect(row.result).toBe('XXXXX');
+  });
+
+  it('escaped dot matches a literal dot only', () => {
+    // Formula source `"\\\\."` — the formula tokenizer turns `\\` into a
+    // single backslash, so the pattern string is `\.` (regex literal dot).
+    const proc = makeProcessor({ result: 'REGEXREPLACE(text, "\\\\.", "X")' });
+    const row: Row = { text: 'a.b' };
+    proc.process(row);
+    expect(row.result).toBe('aXb');
+  });
+
+  it('regex newline pattern matches a literal newline', () => {
+    // Tokenizer converts `"\n"` to an actual newline char. That char is
+    // exactly what regex `\n` matches, so the substitution works.
+    const proc = makeProcessor({ result: 'REGEXREPLACE(text, "\\n", "/")' });
+    const row: Row = { text: 'price\nbreak' };
+    proc.process(row);
+    expect(row.result).toBe('price/break');
+  });
+
+  it('throws FUNCTION_ERROR on invalid pattern', () => {
+    const errors: FormulaError[] = [];
+    const proc = makeProcessor(
+      { result: 'REGEXREPLACE(text, "(", "X")' },
+      undefined,
+      (e) => { errors.push(e); return undefined; },
+    );
+    proc.process({ text: 'hi' } as Row);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].code).toBe('FUNCTION_ERROR');
+    expect(errors[0].message).toMatch(/Invalid regex pattern/);
+  });
+
+  it('throws FUNCTION_ERROR on negative occurrence', () => {
+    const errors: FormulaError[] = [];
+    const proc = makeProcessor(
+      { result: 'REGEXREPLACE(text, "x", "y", -1)' },
+      undefined,
+      (e) => { errors.push(e); return undefined; },
+    );
+    proc.process({ text: 'x' } as Row);
+    expect(errors[0].code).toBe('FUNCTION_ERROR');
+    expect(errors[0].message).toMatch(/non-negative integer/);
+  });
+
+  it('throws FUNCTION_ERROR on case_sensitivity not in {0, 1}', () => {
+    const errors: FormulaError[] = [];
+    const proc = makeProcessor(
+      { result: 'REGEXREPLACE(text, "x", "y", 0, 2)' },
+      undefined,
+      (e) => { errors.push(e); return undefined; },
+    );
+    proc.process({ text: 'x' } as Row);
+    expect(errors[0].code).toBe('FUNCTION_ERROR');
+    expect(errors[0].message).toMatch(/case_sensitivity/);
+  });
+});
+
+describe('REGEXTEST', () => {
+  it('returns true on match', () => {
+    const proc = makeProcessor({ result: 'REGEXTEST(text, "\\d+")' });
+    const row: Row = { text: 'abc123' };
+    proc.process(row);
+    expect(row.result).toBe(true);
+  });
+
+  it('returns false on no match', () => {
+    const proc = makeProcessor({ result: 'REGEXTEST(text, "\\d+")' });
+    const row: Row = { text: 'abc' };
+    proc.process(row);
+    expect(row.result).toBe(false);
+  });
+
+  it('case insensitive when case_sensitivity=1', () => {
+    const proc = makeProcessor({ result: 'REGEXTEST(text, "abc", 1)' });
+    const row: Row = { text: 'Abc' };
+    proc.process(row);
+    expect(row.result).toBe(true);
+  });
+
+  it('case sensitive by default', () => {
+    const proc = makeProcessor({ result: 'REGEXTEST(text, "abc")' });
+    const row: Row = { text: 'Abc' };
+    proc.process(row);
+    expect(row.result).toBe(false);
+  });
+
+  it('throws FUNCTION_ERROR on invalid pattern', () => {
+    const errors: FormulaError[] = [];
+    const proc = makeProcessor(
+      { result: 'REGEXTEST(text, "(")' },
+      undefined,
+      (e) => { errors.push(e); return undefined; },
+    );
+    proc.process({ text: 'hi' } as Row);
+    expect(errors[0].code).toBe('FUNCTION_ERROR');
+  });
+});
+
+describe('REGEXEXTRACT', () => {
+  it('returns the first match (return_mode 0 default)', () => {
+    const proc = makeProcessor({ result: 'REGEXEXTRACT(text, "\\d+")' });
+    const row: Row = { text: 'order #1234 ref 5678' };
+    proc.process(row);
+    expect(row.result).toBe('1234');
+  });
+
+  it('returns empty string when no match', () => {
+    const proc = makeProcessor({ result: 'REGEXEXTRACT(text, "\\d+")' });
+    const row: Row = { text: 'no digits here' };
+    proc.process(row);
+    expect(row.result).toBe('');
+  });
+
+  it('case insensitive', () => {
+    const proc = makeProcessor({ result: 'REGEXEXTRACT(text, "[a-z]+", 0, 1)' });
+    const row: Row = { text: 'Hello World' };
+    proc.process(row);
+    expect(row.result).toBe('Hello');
+  });
+
+  it('return_mode 1 throws not-yet-supported', () => {
+    const errors: FormulaError[] = [];
+    const proc = makeProcessor(
+      { result: 'REGEXEXTRACT(text, "x", 1)' },
+      undefined,
+      (e) => { errors.push(e); return undefined; },
+    );
+    proc.process({ text: 'x' } as Row);
+    expect(errors[0].code).toBe('FUNCTION_ERROR');
+    expect(errors[0].message).toMatch(/not yet supported/);
+  });
+
+  it('return_mode 2 throws not-yet-supported', () => {
+    const errors: FormulaError[] = [];
+    const proc = makeProcessor(
+      { result: 'REGEXEXTRACT(text, "x", 2)' },
+      undefined,
+      (e) => { errors.push(e); return undefined; },
+    );
+    proc.process({ text: 'x' } as Row);
+    expect(errors[0].code).toBe('FUNCTION_ERROR');
+    expect(errors[0].message).toMatch(/not yet supported/);
+  });
+
+  it('return_mode out of range throws', () => {
+    const errors: FormulaError[] = [];
+    const proc = makeProcessor(
+      { result: 'REGEXEXTRACT(text, "x", 5)' },
+      undefined,
+      (e) => { errors.push(e); return undefined; },
+    );
+    proc.process({ text: 'x' } as Row);
+    expect(errors[0].code).toBe('FUNCTION_ERROR');
+    expect(errors[0].message).toMatch(/return_mode/);
+  });
+
+  it('throws FUNCTION_ERROR on invalid pattern', () => {
+    const errors: FormulaError[] = [];
+    const proc = makeProcessor(
+      { result: 'REGEXEXTRACT(text, "(")' },
+      undefined,
+      (e) => { errors.push(e); return undefined; },
+    );
+    proc.process({ text: 'hi' } as Row);
+    expect(errors[0].code).toBe('FUNCTION_ERROR');
+  });
+});
+
+// ============================================================
 // Formula column dependencies
 // ============================================================
 
