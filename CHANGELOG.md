@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-11
+
 ### Added
 
 - `<HighlightedContent>` React component and underlying `buildHighlightedHTML(formula, tokens, colors)` function. Renders a syntax-highlighted formula as a single inline `<span>` for read-only contexts (table cells, tooltips, docs). The component tokenizes internally with the fault-tolerant tokenizer, accepts partial `colors` overrides (defaults from `DEFAULT_COLORS`; pass `DARK_COLORS` for the dark theme), and applies `whiteSpace: 'pre'` by default to preserve formula whitespace. Invalid or partial input still renders — broken regions get a wavy underline in the error color.
@@ -159,7 +161,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/krtools/grid-formula-editor/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/krtools/grid-formula-editor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/krtools/grid-formula-editor/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/krtools/grid-formula-editor/compare/v0.6.1...v0.6.2
