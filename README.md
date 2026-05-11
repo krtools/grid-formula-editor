@@ -902,6 +902,41 @@ interface FormulaChangeInfo {
 }
 ```
 
+### `HighlightedContent` — read-only syntax highlighting
+
+A standalone React component that renders a formula as a syntax-highlighted
+inline `<span>`. Useful for table cells, tooltips, documentation, or any
+read-only display where the full editor would be overkill.
+
+```tsx
+import { HighlightedContent, DARK_COLORS } from '@krllc/table-formulas';
+
+function FormulaCell({ formula }: { formula: string }) {
+  return <HighlightedContent formula={formula} />;
+}
+
+// Dark mode, custom container style
+<HighlightedContent
+  formula='ROUND(price * (1 + taxRate), 2)'
+  colors={DARK_COLORS}
+  style={{ fontFamily: 'monospace' }}
+/>
+```
+
+Props:
+
+| Prop | Type | Description |
+|---|---|---|
+| `formula` | `string` | The formula source to highlight. |
+| `colors?` | `FormulaColorConfig` | Partial overrides on the default palette. Pass `DARK_COLORS` for the dark theme. |
+| `className?` | `string` | Class name on the rendered `<span>`. |
+| `style?` | `React.CSSProperties` | Inline styles merged onto the `<span>`. `whiteSpace: 'pre'` is applied by default. |
+
+The component tokenizes internally with the fault-tolerant tokenizer, so
+invalid or partial input still renders — broken regions get a wavy
+underline in the error color. For non-React contexts, use the underlying
+`buildHighlightedHTML(formula, tokens, colors)` function (also exported).
+
 ### Architecture
 
 Everything is exported from a single package entry point. React is an optional

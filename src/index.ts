@@ -23,6 +23,10 @@ export type {
 
 // Editor UI
 export { FormulaEditor } from './editor/components/FormulaEditor.js';
+export {
+  HighlightedContent,
+  buildHighlightedHTML,
+} from './editor/components/HighlightedContent.js';
 export { getCursorContext } from './editor/autocomplete/cursorContext.js';
 export { getSuggestions } from './editor/autocomplete/AutocompleteEngine.js';
 export { validateFormula } from './editor/validation/formulaValidator.js';
@@ -39,4 +43,5 @@ export type {
   FormulaEditorHandle,
   FormulaEditorProps,
 } from './editor/types.js';
+export type { HighlightedContentProps } from './editor/components/HighlightedContent.js';
 export type { FormulaValidationError } from './editor/validation/formulaValidator.js';

@@ -1,12 +1,29 @@
 import * as React from 'react';
+import { tokenizeSafe } from '../../tokenizer.js';
 import { Token, TokenType } from '../../types.js';
 import { FormulaColorConfig } from '../types.js';
-import { getTokenColor } from '../styles/inlineStyles.js';
+import { mergeColors, getTokenColor } from '../styles/inlineStyles.js';
 
-interface HighlightedContentProps {
+/**
+ * Props for {@link HighlightedContent}. The component tokenizes the formula
+ * internally (via the fault-tolerant tokenizer, so partial/invalid input
+ * still renders — broken regions show with a wavy underline).
+ */
+export interface HighlightedContentProps {
+  /** The formula source to highlight. */
   formula: string;
-  tokens: Token[];
-  colors: Required<FormulaColorConfig>;
+  /**
+   * Partial color overrides. Any missing keys fall back to `DEFAULT_COLORS`.
+   * Pass `DARK_COLORS` to use the dark palette.
+   */
+  colors?: FormulaColorConfig;
+  /** Additional class name on the rendered `<span>`. */
+  className?: string;
+  /**
+   * Additional inline styles. `whiteSpace: 'pre'` is applied by default to
+   * preserve formula whitespace; override here if you want collapsing.
+   */
+  style?: React.CSSProperties;
 }
 
 /**
@@ -96,14 +113,34 @@ function escapeHTML(text: string): string {
 }
 
 /**
- * React component that renders the highlighted formula.
- * This is a convenience wrapper around buildHighlightedHTML.
+ * Renders a syntax-highlighted formula as a single inline `<span>`. The
+ * formula is tokenized internally with the fault-tolerant tokenizer, so
+ * partial/invalid input still renders (broken regions show with a wavy
+ * underline). Each token becomes a colored child `<span>` via
+ * {@link buildHighlightedHTML}.
+ *
+ * The component uses `dangerouslySetInnerHTML` — the HTML is built from
+ * tokenizer output we fully control, and every text segment is escaped by
+ * {@link buildHighlightedHTML}, so user-supplied formula text cannot break
+ * out of its token span.
  */
-export function HighlightedContent({ formula, tokens, colors }: HighlightedContentProps) {
-  const html = React.useMemo(
-    () => buildHighlightedHTML(formula, tokens, colors),
-    [formula, tokens, colors],
-  );
+export function HighlightedContent({
+  formula,
+  colors,
+  className,
+  style,
+}: HighlightedContentProps) {
+  const merged = React.useMemo(() => mergeColors(colors), [colors]);
+  const html = React.useMemo(() => {
+    const { tokens } = tokenizeSafe(formula);
+    return buildHighlightedHTML(formula, tokens, merged);
+  }, [formula, merged]);
 
-  return <>{html}</>;
+  return (
+    <span
+      className={className}
+      style={{ whiteSpace: 'pre', ...style }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
