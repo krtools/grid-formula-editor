@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-13
+
 ### Added
 
 - `renameReferencedColumns(formula, mapping)` — string-in, string-out helper that rewrites every column reference in a formula using `{ oldName: newName }`. Driven by AST source offsets, so whitespace, operator spacing, and any non-renamed text is preserved verbatim. Function names are never touched. The rewrite is a single pass over the original AST, so chained renames don't cascade (`{ a: 'b', b: 'c' }` applied to `a + b` yields `b + c`, not `c + c`). New names that aren't bare-safe (spaces, leading digit, `TRUE`/`FALSE`) are auto-wrapped in `[brackets]`. Throws on empty names or names containing `]` (neither is representable in formula source).
@@ -171,7 +173,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/krtools/grid-formula-editor/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/krtools/grid-formula-editor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/krtools/grid-formula-editor/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/krtools/grid-formula-editor/compare/v0.7.0...v0.7.1
