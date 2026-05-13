@@ -363,6 +363,29 @@ If coercion fails (e.g. `Number("abc")` is `NaN`), the engine raises a
 |----------------|-------------|
 | `process(row)` | Evaluate all formula columns for the given row. |
 
+### Inspecting formulas
+
+For lightweight introspection without spinning up a full compile:
+
+```ts
+import { getReferencedColumns, extractColumnRefs, parse } from '@krllc/table-formulas';
+
+getReferencedColumns('ROUND(price * (1 + taxRate), 2)')
+  // → ['price', 'taxRate']
+
+// Or, when you already have a parsed AST:
+const ast = parse(formula);
+extractColumnRefs(ast)
+  // → ['price', 'taxRate']
+```
+
+| Function | Description |
+|---|---|
+| `getReferencedColumns(formula)` | Parses and returns the de-duplicated list of referenced column names. Throws `FormulaParseError` on invalid syntax. |
+| `extractColumnRefs(ast)` | Lower-level AST walker; same return shape. Use when you already have an AST in hand. |
+
+Both include bracket identifiers (`[First Name]`) and refs inside template interpolations (`` `hello {firstName}` ``).
+
 ### `FormulaError`
 
 Every error carries full context:

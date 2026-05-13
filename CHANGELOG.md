@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `getReferencedColumns(formula)` and `extractColumnRefs(ast)` exported from the package entry. The former takes a formula string, parses it, and returns the de-duplicated list of referenced column names (including bracket identifiers and template-interpolation refs); throws `FormulaParseError` on invalid syntax. The latter is the lower-level AST walker for when you already have a parsed AST. Both already existed internally — driving `compile()`'s dependency graph — but weren't on the public surface.
+
 ## [0.8.0] - 2026-05-11
 
 ### Added

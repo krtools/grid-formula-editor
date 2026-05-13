@@ -1,4 +1,18 @@
+import { parse } from './parser.js';
 import { ASTNode } from './types.js';
+
+/**
+ * Returns the de-duplicated list of column names referenced by `formula`.
+ * Convenience around `parse(formula)` + {@link extractColumnRefs}. Throws
+ * `FormulaParseError` on invalid syntax — wrap in a try/catch if you want
+ * lenient behavior.
+ *
+ * Order matches first-appearance in the AST walk; callers that need a
+ * stable order should sort the result themselves.
+ */
+export function getReferencedColumns(formula: string): string[] {
+  return extractColumnRefs(parse(formula));
+}
 
 export function extractColumnRefs(ast: ASTNode): string[] {
   const refs = new Set<string>();
