@@ -180,6 +180,41 @@ export const BUILTIN_FUNCTIONS: FunctionDef[] = [
     parameters: [{ name: 'text', type: 'string', description: 'The text to decode' }],
   },
 
+  // Regex
+  {
+    name: 'REGEXREPLACE',
+    description: 'Replace regex matches in text (Unicode-aware, u flag always on)',
+    signature: 'REGEXREPLACE(text, pattern, replacement, [occurrence], [case_sensitivity])',
+    parameters: [
+      { name: 'text', type: 'string', description: 'The source text' },
+      { name: 'pattern', type: 'string', description: 'Regex pattern' },
+      { name: 'replacement', type: 'string', description: 'Replacement string ($1, $2, … for backrefs)' },
+      { name: 'occurrence', type: 'number', description: '0 (default) = all; N = the Nth match (1-indexed)', optional: true },
+      { name: 'case_sensitivity', type: 'number', description: '0 (default) = sensitive; 1 = insensitive', optional: true },
+    ],
+  },
+  {
+    name: 'REGEXTEST',
+    description: 'True if the regex pattern matches anywhere in text',
+    signature: 'REGEXTEST(text, pattern, [case_sensitivity])',
+    parameters: [
+      { name: 'text', type: 'string', description: 'The source text' },
+      { name: 'pattern', type: 'string', description: 'Regex pattern' },
+      { name: 'case_sensitivity', type: 'number', description: '0 (default) = sensitive; 1 = insensitive', optional: true },
+    ],
+  },
+  {
+    name: 'REGEXEXTRACT',
+    description: 'Extract the first regex match (return_mode 0). Modes 1 and 2 are reserved for arrays — not yet supported.',
+    signature: 'REGEXEXTRACT(text, pattern, [return_mode], [case_sensitivity])',
+    parameters: [
+      { name: 'text', type: 'string', description: 'The source text' },
+      { name: 'pattern', type: 'string', description: 'Regex pattern' },
+      { name: 'return_mode', type: 'number', description: 'Only 0 (first match) is supported currently', optional: true },
+      { name: 'case_sensitivity', type: 'number', description: '0 (default) = sensitive; 1 = insensitive', optional: true },
+    ],
+  },
+
   // Logical
   {
     name: 'IF', description: 'Conditional value', signature: 'IF(condition, then, else)',

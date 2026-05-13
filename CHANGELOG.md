@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `REGEXREPLACE`, `REGEXTEST`, and `REGEXEXTRACT` now appear in the editor's autocomplete and pass validation. The runtime functions were registered in v0.8.0 but their `BUILTIN_FUNCTIONS` metadata entries were missing, so the editor was flagging them as unknown (red wavy underline) and not offering them in autocomplete. Added a sync-check test that fails CI if any future runtime builtin lacks its editor metadata.
+
 ## [0.10.0] - 2026-05-13
 
 ### Added
