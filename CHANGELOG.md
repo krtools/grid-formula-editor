@@ -7,15 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- `REGEXREPLACE`, `REGEXTEST`, and `REGEXEXTRACT` now appear in the editor's autocomplete and pass validation. The runtime functions were registered in v0.8.0 but their `BUILTIN_FUNCTIONS` metadata entries were missing, so the editor was flagging them as unknown (red wavy underline) and not offering them in autocomplete. Added a sync-check test that fails CI if any future runtime builtin lacks its editor metadata.
-
 ## [0.10.0] - 2026-05-13
 
 ### Added
 
 - `renameReferencedColumns(formula, mapping)` — string-in, string-out helper that rewrites every column reference in a formula using `{ oldName: newName }`. Driven by AST source offsets, so whitespace, operator spacing, and any non-renamed text is preserved verbatim. Function names are never touched. The rewrite is a single pass over the original AST, so chained renames don't cascade (`{ a: 'b', b: 'c' }` applied to `a + b` yields `b + c`, not `c + c`). New names that aren't bare-safe (spaces, leading digit, `TRUE`/`FALSE`) are auto-wrapped in `[brackets]`. Throws on empty names or names containing `]` (neither is representable in formula source).
+
+### Fixed
+
+- `REGEXREPLACE`, `REGEXTEST`, and `REGEXEXTRACT` now appear in the editor's autocomplete and pass validation. The runtime functions were registered in v0.8.0 but their `BUILTIN_FUNCTIONS` metadata entries were missing, so the editor was flagging them as unknown (red wavy underline) and not offering them in autocomplete. Added a sync-check test that fails CI if any future runtime builtin lacks its editor metadata.
 
 ## [0.9.0] - 2026-05-13
 
