@@ -2,7 +2,11 @@
 export { compile } from './compiler.js';
 export { parse } from './parser.js';
 export { tokenize, tokenizeSafe } from './tokenizer.js';
-export { extractColumnRefs, getReferencedColumns } from './dependency.js';
+export {
+  extractColumnRefs,
+  getReferencedColumns,
+  renameReferencedColumns,
+} from './dependency.js';
 export { createBuiltinFunctions } from './functions.js';
 export {
   TokenType,

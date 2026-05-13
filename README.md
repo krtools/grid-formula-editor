@@ -383,8 +383,37 @@ extractColumnRefs(ast)
 |---|---|
 | `getReferencedColumns(formula)` | Parses and returns the de-duplicated list of referenced column names. Throws `FormulaParseError` on invalid syntax. |
 | `extractColumnRefs(ast)` | Lower-level AST walker; same return shape. Use when you already have an AST in hand. |
+| `renameReferencedColumns(formula, mapping)` | Rewrites column references using `{ oldName: newName }`. Returns a new formula string. Preserves whitespace verbatim. |
 
-Both include bracket identifiers (`[First Name]`) and refs inside template interpolations (`` `hello {firstName}` ``).
+Both extraction helpers include bracket identifiers (`[First Name]`) and refs inside template interpolations (`` `hello {firstName}` ``).
+
+#### Renaming column references
+
+When a column gets renamed in your app, rewrite every formula that references it:
+
+```ts
+import { renameReferencedColumns } from '@krllc/table-formulas';
+
+renameReferencedColumns('ROUND(price * (1 + taxRate), 2)', {
+  price: 'cost',
+  taxRate: 'rate',
+})
+  // → 'ROUND(cost * (1 + rate), 2)'
+
+renameReferencedColumns('[First Name] & " " & [Last Name]', {
+  'First Name': 'firstName',
+})
+  // → 'firstName & " " & [Last Name]'
+
+renameReferencedColumns('price', { price: 'Unit Price' })
+  // → '[Unit Price]'  — bracket form when the new name isn't bare-safe
+```
+
+- **Function names are never renamed** — `ROUND(price, 2)` with `{ ROUND: 'X' }` is unchanged.
+- **Single pass over the original AST** — `a + b` with `{ a: 'b', b: 'c' }` becomes `b + c`, not `c + c`.
+- **Bracket form is auto-emitted** when the new name contains spaces / special chars, starts with a digit, or is `TRUE`/`FALSE`.
+- **Throws** if a new name is empty or contains `]` (the bracket form has no escape for the closing bracket).
+- **Throws** `FormulaParseError` on invalid input formula.
 
 ### `FormulaError`
 

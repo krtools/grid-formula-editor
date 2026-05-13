@@ -43,6 +43,117 @@ export function extractColumnRefs(ast: ASTNode): string[] {
   return [...refs];
 }
 
+const BARE_IDENTIFIER_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+/**
+ * Returns `name` formatted for embedding in a formula's source. Emits the
+ * bare identifier when it matches the tokenizer's bare-identifier rule and
+ * isn't the reserved boolean `TRUE`/`FALSE`; otherwise wraps in brackets.
+ *
+ * Throws when the name is empty or contains `]`, since the bracket form
+ * has no escape for the closing bracket and the result wouldn't round-trip.
+ */
+function formatColumnName(name: string): string {
+  if (name === '') {
+    throw new Error('Column name cannot be empty');
+  }
+  if (name.includes(']')) {
+    throw new Error(
+      `Column name cannot contain ']': ${JSON.stringify(name)}`,
+    );
+  }
+  if (BARE_IDENTIFIER_PATTERN.test(name)) {
+    const upper = name.toUpperCase();
+    if (upper !== 'TRUE' && upper !== 'FALSE') {
+      return name;
+    }
+  }
+  return `[${name}]`;
+}
+
+/**
+ * Rewrites a formula's column references using `mapping` (old → new) and
+ * returns the new formula source. Whitespace, operator spacing, comments,
+ * and any text that isn't a renamed column ref is preserved verbatim
+ * (the rewrite is string splicing against parser-emitted source offsets).
+ *
+ * The rewrite is a single pass over the original AST, so chained renames
+ * are not applied — given `{ a: 'b', b: 'c' }`, the formula `a + b`
+ * becomes `b + c`, not `c + c`.
+ *
+ * Function names are never touched — `ROUND(price, 2)` with
+ * `{ ROUND: 'X' }` is unchanged. Only `ColumnRef` nodes are rewritten.
+ *
+ * If the new name isn't a bare-safe identifier (contains spaces / special
+ * chars, starts with a digit, or is `TRUE`/`FALSE`), it's emitted as a
+ * bracket identifier. New names containing `]` or empty strings throw —
+ * neither is representable in formula source.
+ *
+ * Throws `FormulaParseError` when the input formula is invalid. Wrap in
+ * try/catch for lenient handling.
+ */
+export function renameReferencedColumns(
+  formula: string,
+  mapping: Record<string, string>,
+): string {
+  if (Object.keys(mapping).length === 0) return formula;
+
+  const ast = parse(formula);
+
+  interface RefEdit {
+    start: number;
+    end: number;
+    replacement: string;
+  }
+  const edits: RefEdit[] = [];
+
+  function walk(node: ASTNode): void {
+    switch (node.type) {
+      case 'column': {
+        const next = mapping[node.name];
+        if (
+          next !== undefined &&
+          next !== node.name &&
+          node.start !== undefined &&
+          node.end !== undefined
+        ) {
+          edits.push({
+            start: node.start,
+            end: node.end,
+            replacement: formatColumnName(next),
+          });
+        }
+        break;
+      }
+      case 'binary':
+        walk(node.left);
+        walk(node.right);
+        break;
+      case 'unary':
+        walk(node.operand);
+        break;
+      case 'function':
+        for (const arg of node.args) walk(arg);
+        break;
+      case 'template':
+        for (const expr of node.expressions) walk(expr);
+        break;
+      // number, string, boolean — no refs
+    }
+  }
+  walk(ast);
+
+  if (edits.length === 0) return formula;
+
+  // Splice right-to-left so earlier offsets stay valid as we mutate.
+  edits.sort((a, b) => b.start - a.start);
+  let out = formula;
+  for (const edit of edits) {
+    out = out.slice(0, edit.start) + edit.replacement + out.slice(edit.end);
+  }
+  return out;
+}
+
 export interface DependencyResult {
   sorted: string[];
   cycles: string[][];
