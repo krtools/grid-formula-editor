@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-13
+
 ### Added
 
 - `getReferencedColumns(formula)` and `extractColumnRefs(ast)` exported from the package entry. The former takes a formula string, parses it, and returns the de-duplicated list of referenced column names (including bracket identifiers and template-interpolation refs); throws `FormulaParseError` on invalid syntax. The latter is the lower-level AST walker for when you already have a parsed AST. Both already existed internally — driving `compile()`'s dependency graph — but weren't on the public surface.
@@ -165,7 +167,8 @@ Initial release.
 - `prepack` builds fresh `dist/` on publish so tarballs are always current
 - MIT license
 
-[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/krtools/grid-formula-editor/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/krtools/grid-formula-editor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/krtools/grid-formula-editor/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/krtools/grid-formula-editor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/krtools/grid-formula-editor/compare/v0.6.2...v0.7.0
